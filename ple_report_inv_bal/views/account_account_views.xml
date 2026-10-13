@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- Tipo de intangible (Tabla 7 SUNAT) en la cuenta contable, usado por
+         el formato 3.9 del Libro de Inventarios y Balances. -->
+    <record id="view_account_form_inherit_ple_inv_bal" model="ir.ui.view">
+        <field name="name">account.account.form.inherit.ple.inv.bal</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='allowed_journal_ids']" position="after">
+                <field name="l10n_pe_intangible_type"
+                       invisible="account_type != 'asset_non_current'"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

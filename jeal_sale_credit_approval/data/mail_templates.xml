@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Solicitud al aprobador -->
+    <record id="mail_tmpl_credit_request" model="mail.template">
+        <field name="name">Crédito JE-AL: solicitud de aprobación</field>
+        <field name="model_id" ref="model_jeal_credit_approval_request"/>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ object.approver_id.email }}</field>
+        <field name="subject">Aprobación de crédito – {{ object.order_id.name }} – {{ object.partner_id.name }} – {{ object.currency_id.format(object.amount_pen) }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family:Arial,sans-serif;color:#1a1a1a;">
+                <p>Estimado/a <strong t-out="object.approver_id.name or ''">Aprobador</strong>:
+                    el vendedor <strong t-out="object.user_id.name or ''">Vendedor</strong>
+                    solicita aprobar la siguiente venta al crédito.</p>
+                <table style="border-collapse:collapse;margin:16px 0;">
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Cotización</td><td><strong t-out="object.order_id.name or ''"/> · <t t-out="object.name or ''"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Cliente</td><td><t t-out="object.partner_id.name or ''"/> · RUC <t t-out="object.partner_id.vat or '—'"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Importe</td><td><t t-out="object.currency_id.format(object.amount_pen)"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Límite de crédito</td><td><t t-out="object.currency_id.format(object.credit_limit)"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Deuda total actual</td><td><t t-out="object.currency_id.format(object.debt_total)"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Deuda vencida</td><td><t t-out="object.currency_id.format(object.debt_overdue)"/></td></tr>
+                    <tr><td style="padding:2px 12px 2px 0;color:#666;">Exceso</td><td><strong t-out="object.currency_id.format(object.excess)"/></td></tr>
+                </table>
+                <p>
+                    <a t-att-href="object._get_public_url('approve')"
+                       style="background:#157347;color:#fff;padding:10px 22px;text-decoration:none;border-radius:4px;margin-right:12px;">Aprobar</a>
+                    <a t-att-href="object._get_public_url('reject')"
+                       style="background:#b02a37;color:#fff;padding:10px 22px;text-decoration:none;border-radius:4px;">Rechazar</a>
+                </p>
+                <p style="color:#666;font-size:12px;">Este enlace sirve una sola
+                    vez y vence el <t t-out="object.expiry_date or ''"/>.</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.approver_id.lang }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <!-- Crédito aprobado (al vendedor) -->
+    <record id="mail_tmpl_credit_approved" model="mail.template">
+        <field name="name">Crédito JE-AL: aprobado</field>
+        <field name="model_id" ref="model_jeal_credit_approval_request"/>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ object.user_id.email }}</field>
+        <field name="subject">Crédito aprobado – {{ object.order_id.name }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family:Arial,sans-serif;color:#1a1a1a;">
+                <p>La solicitud <strong t-out="object.name or ''"/> de la
+                    cotización <strong t-out="object.order_id.name or ''"/> fue
+                    <strong style="color:#157347;">APROBADA</strong> por
+                    <t t-out="object.approver_id.name or ''"/>.</p>
+                <p>Ya puede confirmar la cotización.</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.user_id.lang }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <!-- Crédito rechazado (al vendedor) -->
+    <record id="mail_tmpl_credit_rejected" model="mail.template">
+        <field name="name">Crédito JE-AL: rechazado</field>
+        <field name="model_id" ref="model_jeal_credit_approval_request"/>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ object.user_id.email }}</field>
+        <field name="subject">Crédito rechazado – {{ object.order_id.name }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family:Arial,sans-serif;color:#1a1a1a;">
+                <p>La solicitud <strong t-out="object.name or ''"/> de la
+                    cotización <strong t-out="object.order_id.name or ''"/> fue
+                    <strong style="color:#b02a37;">RECHAZADA</strong> por
+                    <t t-out="object.approver_id.name or ''"/>.</p>
+                <p><strong>Motivo:</strong> <t t-out="object.rejection_reason or ''"/></p>
+            </div>
+        </field>
+        <field name="lang">{{ object.user_id.lang }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <!-- Solicitud vencida (al vendedor) -->
+    <record id="mail_tmpl_credit_expired" model="mail.template">
+        <field name="name">Crédito JE-AL: solicitud vencida</field>
+        <field name="model_id" ref="model_jeal_credit_approval_request"/>
+        <field name="email_from">{{ (object.company_id.email or user.email) }}</field>
+        <field name="email_to">{{ object.user_id.email }}</field>
+        <field name="subject">Solicitud de crédito vencida – {{ object.order_id.name }}</field>
+        <field name="body_html" type="html">
+            <div style="font-family:Arial,sans-serif;color:#1a1a1a;">
+                <p>La solicitud <strong t-out="object.name or ''"/> de la
+                    cotización <strong t-out="object.order_id.name or ''"/>
+                    venció sin respuesta del aprobador.</p>
+                <p>Puede reenviar la solicitud desde la cotización con un enlace
+                    nuevo (se recalcula con la deuda del momento).</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.user_id.lang }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+</odoo>

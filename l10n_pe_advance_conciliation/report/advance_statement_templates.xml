@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_advance_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>
+                            Estado de cuenta ·
+                            <span t-field="doc.name"/>
+                        </h2>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>Socio:</strong>
+                                <span t-field="doc.partner_id"/><br/>
+                                <strong>Tipo:</strong>
+                                <span t-field="doc.advance_type"/><br/>
+                                <strong>Contrato:</strong>
+                                <span t-field="doc.contract_ref"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Moneda:</strong>
+                                <span t-field="doc.currency_id"/><br/>
+                                <strong>Fecha:</strong>
+                                <span t-field="doc.date"/><br/>
+                                <strong>Cuenta de control:</strong>
+                                <span t-field="doc.control_account_id"/>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm mt-4">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Movimiento</th>
+                                    <th>Documento destino</th>
+                                    <th class="text-end">Ingreso</th>
+                                    <th class="text-end">Aplicacion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span t-field="doc.date"/></td>
+                                    <td>Origen</td>
+                                    <td><span t-field="doc.origin_move_id.name"/></td>
+                                    <td class="text-end">
+                                        <span t-field="doc.amount_base"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                    <td class="text-end">-</td>
+                                </tr>
+                                <tr t-foreach="doc.application_ids.filtered('active')" t-as="app">
+                                    <td><span t-field="app.date"/></td>
+                                    <td><span t-field="app.application_type"/></td>
+                                    <td><span t-field="app.move_id.name"/></td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end">
+                                        <span t-field="app.amount_base"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Saldo por aplicar</th>
+                                    <th colspan="2" class="text-end">
+                                        <span t-field="doc.amount_residual"
+                                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

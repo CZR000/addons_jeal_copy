@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="account_multicurrency_revaluation_dual_rate.MulticurrencyRevaluationDualRateReportFilterExchangeRate">
+        <Dropdown
+            menuClass="'account_report_filter exchange_rate'"
+            onStateChanged="(isOpen) => !isOpen ? this.applyFilters('currency_rates') : null"
+        >
+            <button class="btn btn-secondary">
+                <i class="fa fa-line-chart"/> Exchange Rates
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-header pe-none">
+                    1 <t t-out="controller.options.company_currency.currency_main"/>
+                </div>
+
+                <t t-foreach="Object.values(this.controller.options.currency_rates)" t-as="currencyRate" t-key="currencyRate.currency_id">
+
+                    <div class="dropdown-item">
+                        <div>
+                            <input type="text"
+                                   inputmode="numeric"
+                                   t-att-value="currencyRate.sale_rate"
+                                   t-att-name="'sale_rate' + currencyRate.currency_id"
+                                   t-on-change="(ev) => this.filterExchangeRate(ev, currencyRate.currency_id, 'sale_rate')"
+                            />
+                        </div>
+                        <label class="d-flex align-items-center" t-att-for="'sale_rate_' + currencyRate.currency_id">
+                            <t t-out="currencyRate.currency_name"/> Sale
+                        </label>
+
+                        <div>
+                            <input type="text"
+                                   inputmode="numeric"
+                                   t-att-value="currencyRate.purchase_rate"
+                                   t-att-name="'purchase_rate' + currencyRate.currency_id"
+                                   t-on-change="(ev) => this.filterExchangeRate(ev, currencyRate.currency_id, 'purchase_rate')"
+                            />
+                        </div>
+                        <label class="d-flex align-items-center" t-att-for="'purchase_rate_' + currencyRate.currency_id">
+                            <t t-out="currencyRate.currency_name"/> Purchase
+                        </label>
+                    </div>
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+</templates>

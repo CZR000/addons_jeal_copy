@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_credit_send_wizard_form" model="ir.ui.view">
+        <field name="name">jeal.credit.approval.send.wizard.form</field>
+        <field name="model">jeal.credit.approval.send.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Se requiere aprobación de crédito">
+                <field name="order_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    La cotización no puede confirmarse: requiere aprobación de crédito.
+                </div>
+                <group>
+                    <field name="credit_limit" string="Límite de crédito"/>
+                    <field name="debt_total" string="Deuda total actual"/>
+                    <field name="amount_pen" string="Esta cotización (S/)"/>
+                    <field name="projected" string="Deuda con esta venta"/>
+                    <field name="excess" string="Exceso sobre el límite"/>
+                    <field name="debt_overdue" string="Deuda vencida"/>
+                </group>
+                <p>
+                    Se enviará a <field name="approver_name" class="oe_inline" readonly="1"/>.
+                    El enlace vence en <field name="validity_hours" class="oe_inline" readonly="1"/> horas.
+                </p>
+                <footer>
+                    <button name="action_send" type="object"
+                            string="Enviar solicitud al aprobador" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

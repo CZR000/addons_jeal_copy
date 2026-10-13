@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="approval_category_view_form" model="ir.ui.view">
+        <field name="name">approval.category.form.l10n_pe_settlement</field>
+        <field name="model">approval.category</field>
+        <field name="inherit_id" ref="je_approval_expense_flow.approval_category_view_form_je"/>
+        <field name="arch" type="xml">
+            <field name="default_means_payment_id" position="after">
+                <field name="l10n_pe_advance_kind" invisible="approval_type != 'payment'"/>
+                <field name="l10n_pe_payment_journal_ids" widget="many2many_tags"
+                       invisible="approval_type != 'payment' or not l10n_pe_advance_kind"
+                       options="{'no_create': True}"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="approval_request_view_form" model="ir.ui.view">
+        <field name="name">approval.request.form.l10n_pe_settlement</field>
+        <field name="model">approval.request</field>
+        <field name="inherit_id" ref="approvals.approval_request_view_form"/>
+        <field name="arch" type="xml">
+            <field name="amount" position="after">
+                <field name="l10n_pe_advance_kind" invisible="1"/>
+                <field name="l10n_pe_currency_id"
+                       invisible="not l10n_pe_advance_kind"
+                       required="l10n_pe_advance_kind"
+                       readonly="request_status != 'new'"
+                       options="{'no_create': True}"/>
+                <field name="l10n_pe_employee_id"
+                       invisible="not l10n_pe_advance_kind"
+                       readonly="request_status != 'new'"
+                       options="{'no_create': True}"/>
+                <field name="l10n_pe_expense_sheet_id" invisible="not l10n_pe_expense_sheet_id"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

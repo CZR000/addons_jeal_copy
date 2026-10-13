@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_credit_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.jeal.credit</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='sale_management']" position="inside">
+                <block title="Aprobación de crédito (JE-AL)" id="jeal_credit_block">
+                    <setting string="Aprobador de crédito"
+                             help="Usuario único que aprueba por correo.">
+                        <field name="jeal_credit_approver_id"/>
+                    </setting>
+                    <setting string="Vigencia del enlace"
+                             help="Horas de validez de los botones Aprobar / Rechazar.">
+                        <field name="jeal_link_validity_hours"/> horas
+                    </setting>
+                    <setting string="Exigir aprobación con deuda vencida">
+                        <field name="jeal_require_approval_overdue"/>
+                    </setting>
+                    <setting string="Composición de la deuda total"
+                             help="Piezas que suman a la deuda comparada contra el límite.">
+                        <div class="content-group">
+                            <div><field name="jeal_debt_include_draft"/>
+                                <span class="ms-1">Incluir facturas en borrador</span></div>
+                            <div><field name="jeal_debt_include_so_unbilled"/>
+                                <span class="ms-1">Incluir pedidos confirmados sin facturar</span></div>
+                            <div><field name="jeal_debt_subtract_advances"/>
+                                <span class="ms-1">Restar anticipos sin aplicar</span></div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

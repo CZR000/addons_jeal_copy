@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_credit" model="ir.ui.view">
+        <field name="name">res.partner.form.jeal.credit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="Crédito" name="jeal_credit"
+                      invisible="customer_rank == 0">
+                    <field name="jeal_company_currency_id" invisible="1"/>
+                    <group>
+                        <group string="Línea de crédito">
+                            <label for="jeal_credit_limit"/>
+                            <div class="o_row">
+                                <field name="jeal_credit_limit"
+                                       readonly="not is_jeal_credit_manager"/>
+                                <field name="is_jeal_credit_manager" invisible="1"/>
+                                <button name="action_jeal_change_limit" type="object"
+                                        string="Cambiar límite" class="btn-link"
+                                        invisible="not is_jeal_credit_manager"/>
+                            </div>
+                            <field name="jeal_debt_total"/>
+                            <field name="jeal_debt_overdue"/>
+                            <field name="jeal_credit_available"/>
+                            <field name="jeal_credit_usage" widget="percentage"/>
+                        </group>
+                    </group>
+                    <separator string="Historial de límite"/>
+                    <field name="jeal_limit_history_ids" readonly="1">
+                        <list>
+                            <field name="change_date"/>
+                            <field name="user_id"/>
+                            <field name="previous_limit"/>
+                            <field name="new_limit"/>
+                            <field name="reason"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

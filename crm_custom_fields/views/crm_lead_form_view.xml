@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="crm_lead_loss_fields_form" model="ir.ui.view">
+        <field name="name">crm.lead.loss.fields.form</field>
+        <field name="model">crm.lead</field>
+
+        <!-- Heredamos de la vista de Studio que contiene los campos x_studio_* -->
+        <field name="inherit_id" ref="studio_customization.odoo_studio_crm_lead_dd0d698a-3c65-4e35-bf29-693a91259456"/>
+
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+
+            <!-- 1. Ocultar campos originales de Studio -->
+            <xpath expr="//field[@name='x_studio_categora_de_prdida']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_detalle_precio']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_detalle_operaciones']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_producto_especificaciones']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_cliente_decisin']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_proceso_comercial']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_servicio_postventa']" position="replace"/>
+            <xpath expr="//field[@name='x_studio_otros']" position="replace"/>
+
+            <!--
+                2. Insertar campos nuevos después de x_studio_nmero_de_trabajadores.
+
+                Odoo 18: el atributo ``attrs`` fue eliminado en v17. Los modificadores
+                ``invisible`` / ``required`` / ``readonly`` ahora se declaran como
+                atributos directos con expresiones Python.
+            -->
+            <xpath expr="//field[@name='x_studio_nmero_de_trabajadores']" position="after">
+
+                <field name="x_loss_category"
+                       string="Categoría de pérdida"/>
+
+                <field name="x_loss_detail_price"
+                       string="Detalle Precio / Condiciones comerciales"
+                       invisible="x_loss_category != 'price'"
+                       required="x_loss_category == 'price'"/>
+
+                <field name="x_loss_detail_operations"
+                       string="Detalle Disponibilidad / Operaciones"
+                       invisible="x_loss_category != 'operations'"
+                       required="x_loss_category == 'operations'"/>
+
+                <field name="x_loss_detail_product"
+                       string="Detalle Producto / Especificaciones"
+                       invisible="x_loss_category != 'product'"
+                       required="x_loss_category == 'product'"/>
+
+                <field name="x_loss_detail_client"
+                       string="Detalle Cliente / Decisión"
+                       invisible="x_loss_category != 'client'"
+                       required="x_loss_category == 'client'"/>
+
+                <field name="x_loss_detail_commercial"
+                       string="Detalle Proceso Comercial"
+                       invisible="x_loss_category != 'commercial'"
+                       required="x_loss_category == 'commercial'"/>
+
+                <field name="x_loss_detail_service"
+                       string="Detalle Servicio / Postventa"
+                       invisible="x_loss_category != 'service'"
+                       required="x_loss_category == 'service'"/>
+
+                <field name="x_loss_detail_other"
+                       string="Detalle Otros"
+                       invisible="x_loss_category != 'other'"
+                       required="x_loss_category == 'other'"/>
+
+                <!-- Siempre invisible en formulario -->
+                <field name="x_loss_detail_general" invisible="1"/>
+
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
