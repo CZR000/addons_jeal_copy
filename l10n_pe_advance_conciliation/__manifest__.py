@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Anticipos y Revolventes",
-    "version": "18.0.1.0.3",
+    "version": "18.0.1.1.0",
     "category": "Accounting/Localizations",
     "summary": "Control de anticipos de clientes/proveedores y revolventes con "
                "documentos, saldos y conciliacion automatica",
@@ -19,6 +19,7 @@ Ver documento de diseno: l10n_pe_advance_conciliation.
     "license": "OPL-1",
     "depends": [
         "account",
+        "accountant",
         "l10n_pe",
     ],
     "data": [
@@ -33,11 +34,13 @@ Ver documento de diseno: l10n_pe_advance_conciliation.
         "wizards/advance_revolving_wizard_views.xml",
         "wizards/advance_close_wizard_views.xml",
         "wizards/advance_migration_wizard_views.xml",
+        "wizards/advance_statement_wizard_views.xml",
         "report/advance_reconcile_report_views.xml",
         "report/advance_statement_report.xml",
         "report/advance_statement_templates.xml",
+        "report/advance_statement_partner_templates.xml",
         "views/menus.xml",
     ],
     "installable": True,
-    "application": True,
+    "application": False,
 }

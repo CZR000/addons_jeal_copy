@@ -4,7 +4,7 @@ Módulo Odoo 18 para el control de anticipos de clientes/proveedores y
 revolventes mediante documentos con saldo propio (ANTC / REV), con creación,
 aplicación y conciliación automáticas.
 
-**Autor:** Empiria · **Versión:** 18.0.1.0.0 · **Cliente:** JEAL
+**Autor:** Empiria · **Versión:** 18.0.1.1.0 · **Cliente:** JEAL
 
 ## Qué hace
 
@@ -19,6 +19,35 @@ aplicación y conciliación automáticas.
 - Wizard **Cerrar saldo residual** por tolerancia de redondeo.
 - Reportes: saldos por documento (lista/pivote/gráfico), estado de cuenta (PDF)
   y cuadre del módulo contra el mayor.
+
+## Menú
+
+Ya no es una aplicación propia. Vive dentro de Contabilidad:
+
+- **Contabilidad → Anticipos y Revolventes**: anticipos de clientes, anticipos
+  a proveedores, revolventes e Informes (saldos por documento, detalle de
+  aplicaciones, estado de cuenta por socio, cuadre contra contabilidad).
+- **Contabilidad → Configuración → Anticipos y Revolventes**: configuración y
+  migración de saldos iniciales (grupo Anticipos / Responsable).
+
+Requiere Contabilidad Enterprise (`accountant`).
+
+## Revolventes
+
+- Cada apunte al haber de la cuenta de control (con socio, en la moneda de la
+  configuración y en un diario configurado) crea su REV, enlazado a ese apunte
+  exacto. También funciona desde la conciliación bancaria.
+- "Aplicar revolvente" solo en facturas de cliente publicadas y en la moneda
+  del revolvente. Compensa el saldo neto de la factura (después de la
+  detracción), reparte por FIFO y concilia todas las cuotas por cobrar.
+- El asiento de compensación enlaza la factura y los REV usados. Si se revierte
+  o pasa a borrador, las aplicaciones se anulan y el saldo se libera.
+- Un depósito cuyo REV ya tiene aplicaciones no puede pasarse a borrador.
+
+## Cierre por redondeo
+
+Por ahora todo cierre va a la cuenta de gasto por redondeo (6593004), al debe o
+al haber según el tipo de documento y el signo del saldo.
 
 ## Instalación
 

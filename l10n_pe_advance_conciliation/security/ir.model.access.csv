@@ -17,3 +17,4 @@ access_advance_acc_invoice,advance read billing,model_l10n_pe_advance,account.gr
 access_advance_acc_user,advance read accountant,model_l10n_pe_advance,account.group_account_user,1,0,0,0
 access_advance_app_acc_invoice,advance app read billing,model_l10n_pe_advance_application,account.group_account_invoice,1,0,0,0
 access_advance_app_acc_user,advance app read accountant,model_l10n_pe_advance_application,account.group_account_user,1,0,0,0
+access_statement_wizard,statement wizard,model_l10n_pe_advance_statement_wizard,group_advance_user,1,1,1,1

@@ -44,6 +44,13 @@ class L10nPeAdvance(models.Model):
         "account.move", string="Asiento origen", readonly=True,
         help="Factura de anticipo o asiento del deposito.",
     )
+    origin_line_id = fields.Many2one(
+        "account.move.line", string="Apunte origen", readonly=True,
+        index=True, copy=False,
+        help="Apunte exacto de la cuenta de control que origina el saldo "
+             "(linea del deposito en el revolvente). Es el apunte contra el "
+             "que se concilian las aplicaciones.",
+    )
     contract_ref = fields.Char(string="Contrato", readonly=True)
 
     amount_base = fields.Monetary(
@@ -194,15 +201,98 @@ class L10nPeAdvance(models.Model):
         }
 
     # ------------------------------------------------------------------
+    # Estado de cuenta
+    # ------------------------------------------------------------------
+    def _l10n_pe_statement_rows(self, date_from=False, date_to=False):
+        """Movimientos del documento para el estado de cuenta.
+
+        Devuelve un dict con:
+          - opening: saldo antes de date_from
+          - rows: lista de movimientos dentro del rango, con saldo acumulado
+          - closing: saldo al final del rango
+          - income / applied: totales del rango
+        Las fechas son opcionales (sin rango = todo el historial)."""
+        self.ensure_one()
+        date_from = fields.Date.to_date(date_from) if date_from else False
+        date_to = fields.Date.to_date(date_to) if date_to else False
+        types = dict(
+            self.env["l10n_pe.advance.application"]._fields[
+                "application_type"
+            ].selection
+        )
+        origin_label = (
+            _("Deposito") if self.advance_type == "revolving" else _("Anticipo")
+        )
+        movements = [{
+            "date": self.date,
+            "seq": 0,
+            "movement": origin_label,
+            "move": self.origin_move_id,
+            "invoice": self.env["account.move"],
+            "income": self.amount_base,
+            "applied": 0.0,
+        }]
+        for app in self.application_ids.filtered("active").sorted(
+            lambda a: (a.date or self.date, a.id)
+        ):
+            movements.append({
+                "date": app.date or self.date,
+                "seq": app.id,
+                "movement": types.get(app.application_type, ""),
+                "move": app.move_id,
+                "invoice": app.invoice_id,
+                "income": 0.0,
+                "applied": app.amount_base,
+            })
+        movements.sort(key=lambda m: (m["date"], m["seq"]))
+
+        opening = 0.0
+        balance = 0.0
+        rows = []
+        income = applied = 0.0
+        for mov in movements:
+            if date_to and mov["date"] > date_to:
+                continue
+            delta = mov["income"] - mov["applied"]
+            if date_from and mov["date"] < date_from:
+                opening += delta
+                balance += delta
+                continue
+            balance += delta
+            income += mov["income"]
+            applied += mov["applied"]
+            rows.append(dict(mov, balance=balance))
+        return {
+            "opening": opening,
+            "rows": rows,
+            "closing": balance,
+            "income": income,
+            "applied": applied,
+        }
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
     def _get_open_control_line(self):
-        """Apunte de la cuenta de control en el asiento origen, aun por
-        conciliar. Sirve para conciliar contra las aplicaciones."""
+        """Apunte de la cuenta de control que origina el documento, aun por
+        conciliar. Sirve para conciliar contra las aplicaciones.
+
+        Si el documento guarda su apunte exacto (origin_line_id) se usa ese;
+        si no (documentos antiguos o migrados), se busca en el asiento origen
+        por cuenta y socio."""
         self.ensure_one()
+        MoveLine = self.env["account.move.line"]
+        if self.origin_line_id:
+            line = self.origin_line_id
+            return line if not line.reconciled else MoveLine
         if not self.origin_move_id or not self.control_account_id:
-            return self.env["account.move.line"]
-        return self.origin_move_id.line_ids.filtered(
+            return MoveLine
+        lines = self.origin_move_id.line_ids.filtered(
             lambda l: l.account_id == self.control_account_id
             and not l.reconciled
-        )[:1]
+        )
+        same_partner = lines.filtered(
+            lambda l: l.partner_id.commercial_partner_id
+            == self.partner_id.commercial_partner_id
+        )
+        return (same_partner or lines)[:1]

@@ -63,18 +63,29 @@
                         <group>
                             <field name="advance_type"/>
                             <field name="partner_id"/>
-                            <field name="date"/>
-                            <field name="contract_ref"/>
+                            <field name="date"
+                                   invisible="advance_type == 'revolving'"/>
+                            <field name="date" string="Fecha del deposito"
+                                   invisible="advance_type != 'revolving'"/>
+                            <field name="contract_ref"
+                                   invisible="advance_type == 'revolving'"/>
                         </group>
                         <group>
                             <field name="currency_id"/>
                             <field name="control_account_id"/>
-                            <field name="origin_move_id"/>
+                            <field name="origin_move_id"
+                                   invisible="advance_type == 'revolving'"/>
+                            <field name="origin_move_id" string="Asiento de deposito"
+                                   invisible="advance_type != 'revolving'"/>
+                            <field name="origin_line_id" readonly="1"
+                                   invisible="advance_type != 'revolving'"
+                                   groups="base.group_no_one"/>
                             <field name="config_id"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <group string="Importes">
+                    <!-- Anticipos: base / IGV / total -->
+                    <group string="Importes" invisible="advance_type == 'revolving'">
                         <group>
                             <field name="amount_base"/>
                             <field name="amount_tax"/>
@@ -86,6 +97,16 @@
                             <field name="amount_total_residual"/>
                         </group>
                     </group>
+                    <!-- Revolvente: deposito / aplicado / saldo disponible -->
+                    <group string="Importes" invisible="advance_type != 'revolving'">
+                        <group>
+                            <field name="amount_base" string="Deposito"/>
+                        </group>
+                        <group>
+                            <field name="amount_applied" string="Aplicado"/>
+                            <field name="amount_residual" string="Saldo disponible"/>
+                        </group>
+                    </group>
                     <notebook>
                         <page string="Aplicaciones" name="applications">
                             <field name="application_ids" readonly="1">
@@ -93,10 +114,15 @@
                                     <field name="date"/>
                                     <field name="application_type"/>
                                     <field name="move_id"/>
+                                    <field name="invoice_id"/>
                                     <field name="amount_base"/>
-                                    <field name="amount_total"/>
+                                    <field name="amount_total"
+                                           column_invisible="parent.advance_type == 'revolving'"/>
+                                    <field name="amount_company_currency" optional="show"/>
                                     <field name="reconcile_state"/>
                                     <field name="move_state"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="company_currency_id" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
@@ -169,6 +195,60 @@
                 <field name="partner_id"/>
                 <field name="amount_residual" type="measure"/>
             </graph>
+        </field>
+    </record>
+
+    <!-- ============ APLICACIONES ============ -->
+    <record id="view_advance_application_list" model="ir.ui.view">
+        <field name="name">l10n_pe.advance.application.list</field>
+        <field name="model">l10n_pe.advance.application</field>
+        <field name="arch" type="xml">
+            <list string="Detalle de aplicaciones" create="false"
+                  decoration-muted="not active">
+                <field name="date"/>
+                <field name="advance_id"/>
+                <field name="advance_type"/>
+                <field name="partner_id"/>
+                <field name="application_type"/>
+                <field name="move_id"/>
+                <field name="invoice_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_currency_id" column_invisible="1"/>
+                <field name="amount_base" sum="Total"/>
+                <field name="amount_total" optional="show"/>
+                <field name="amount_company_currency" optional="show" sum="Total S/"/>
+                <field name="reconcile_state"/>
+                <field name="move_state" optional="hide"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_advance_application_search" model="ir.ui.view">
+        <field name="name">l10n_pe.advance.application.search</field>
+        <field name="model">l10n_pe.advance.application</field>
+        <field name="arch" type="xml">
+            <search string="Aplicaciones">
+                <field name="advance_id"/>
+                <field name="partner_id"/>
+                <field name="invoice_id"/>
+                <field name="move_id"/>
+                <filter name="revolving" string="Revolvente"
+                        domain="[('advance_type', '=', 'revolving')]"/>
+                <filter name="advances" string="Anticipos"
+                        domain="[('advance_type', 'in', ('customer', 'supplier'))]"/>
+                <separator/>
+                <filter name="inactive" string="Anuladas"
+                        domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_partner" string="Socio"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_advance" string="Documento"
+                            context="{'group_by': 'advance_id'}"/>
+                    <filter name="group_type" string="Tipo de movimiento"
+                            context="{'group_by': 'application_type'}"/>
+                </group>
+            </search>
         </field>
     </record>
 

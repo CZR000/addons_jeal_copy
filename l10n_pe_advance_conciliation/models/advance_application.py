@@ -26,6 +26,12 @@ class L10nPeAdvanceApplication(models.Model):
     move_id = fields.Many2one(
         "account.move", string="Factura / asiento destino", index=True,
     )
+    invoice_id = fields.Many2one(
+        "account.move", string="Factura aplicada", index=True,
+        help="Factura en la que se uso el anticipo o el revolvente. En las "
+             "facturas coincide con el asiento destino; en el revolvente es "
+             "la factura compensada por el asiento de compensacion.",
+    )
     move_line_id = fields.Many2one(
         "account.move.line", string="Apunte en cuenta de control",
     )

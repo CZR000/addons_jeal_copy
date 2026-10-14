@@ -15,9 +15,14 @@
                     <group>
                         <field name="date"/>
                         <field name="amount_to_compensate"/>
+                        <field name="available_total" readonly="1"/>
                         <field name="currency_id" invisible="1"/>
                     </group>
                 </group>
+                <p class="text-muted mb-1">
+                    Distribucion FIFO: primero el deposito mas antiguo. Puedes
+                    cambiar el monto de cada linea.
+                </p>
                 <field name="line_ids">
                     <list editable="bottom" create="false" delete="false">
                         <field name="advance_id" readonly="1"/>
@@ -35,10 +40,11 @@
                 </group>
                 <p class="text-muted">
                     Se genera el asiento de compensacion: cuenta de control al
-                    debe (una linea por revolvente, distribucion FIFO) y la
-                    cuenta por cobrar al haber. Luego se concilian ambas
-                    automaticamente. El total a usar debe igualar el importe a
-                    compensar.
+                    debe (una linea por revolvente) y la cuenta por cobrar al
+                    haber. Luego se concilian ambas automaticamente. El total a
+                    usar debe igualar el importe a compensar. Si el tipo de
+                    cambio del deposito y el de la compensacion son distintos,
+                    Odoo registra la diferencia de cambio al conciliar.
                 </p>
                 <footer>
                     <button name="action_generate" type="object"

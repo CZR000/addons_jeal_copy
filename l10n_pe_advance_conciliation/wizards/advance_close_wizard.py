@@ -10,6 +10,9 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
     advance_id = fields.Many2one(
         "l10n_pe.advance", string="Documento", required=True,
     )
+    advance_type = fields.Selection(
+        related="advance_id.advance_type", string="Tipo",
+    )
     partner_id = fields.Many2one(
         related="advance_id.partner_id", string="Socio",
     )
@@ -29,6 +32,15 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
     account_id = fields.Many2one(
         "account.account", string="Cuenta", compute="_compute_account",
     )
+    analytic_distribution = fields.Json(
+        string="Distribucion analitica",
+        help="Obligatoria si la cuenta de redondeo usa cuentas de destino.",
+    )
+    analytic_precision = fields.Integer(
+        default=lambda self: self.env["decimal.precision"].precision_get(
+            "Percentage Analytic"
+        ),
+    )
     date = fields.Date(
         string="Fecha", required=True, default=fields.Date.context_today,
     )
@@ -36,19 +48,40 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
         related="advance_id.config_id.compensation_journal_id", string="Diario",
     )
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _control_sign(self):
+        """Signo con el que el saldo del documento se registra en la cuenta
+        de control al cerrarlo.
+
+        - Cliente / revolvente: la cuenta de control es un pasivo (saldo
+          acreedor); cerrar un saldo positivo es un DEBE en la cuenta.
+        - Proveedor: la cuenta de control es un activo (saldo deudor);
+          cerrar un saldo positivo es un HABER en la cuenta.
+        """
+        self.ensure_one()
+        return -1.0 if self.advance_id.advance_type == "supplier" else 1.0
+
     @api.depends("advance_id", "residual")
     def _compute_account(self):
+        """Por ahora (acordado con JEAL) todo cierre va a la cuenta de gasto
+        por redondeo (6593004), al debe o al haber segun el tipo de documento
+        y el signo del saldo. La cuenta de ingreso solo se usa si no hay
+        cuenta de gasto configurada."""
         for wiz in self:
             config = wiz.advance_id.config_id
             if not config:
                 wiz.account_id = False
                 continue
-            # Segun el signo del saldo elige gasto o ingreso por redondeo.
-            if wiz.residual >= 0:
-                wiz.account_id = config.rounding_expense_account_id
-            else:
-                wiz.account_id = config.rounding_income_account_id
+            wiz.account_id = (
+                config.rounding_expense_account_id
+                or config.rounding_income_account_id
+            )
 
+    # ------------------------------------------------------------------
+    # Action
+    # ------------------------------------------------------------------
     def action_close(self):
         self.ensure_one()
         advance = self.advance_id
@@ -60,6 +93,11 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
             raise UserError(
                 _("Configura la cuenta de redondeo (gasto/ingreso).")
             )
+        journal = self.journal_id or config.compensation_journal_id
+        if not journal:
+            raise UserError(
+                _("Configura el diario de compensacion en la configuracion.")
+            )
         if abs(self.residual) > config.closing_tolerance:
             raise UserError(
                 _("El saldo supera la tolerancia configurada.")
@@ -68,33 +106,36 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
             raise UserError(_("El documento no tiene saldo por cerrar."))
 
         residual = self.residual
+        control_amount = residual * self._control_sign()
         balance = advance.currency_id._convert(
-            residual, company.currency_id, company, self.date,
+            control_amount, company.currency_id, company, self.date,
         )
+        label = _("Cierre por redondeo %s") % advance.name
         control_vals = {
-            "name": _("Cierre por redondeo %s") % advance.name,
+            "name": label,
             "account_id": advance.control_account_id.id,
             "partner_id": advance.partner_id.id,
             "currency_id": advance.currency_id.id,
-            "amount_currency": residual,
+            "amount_currency": control_amount,
             "debit": balance if balance > 0 else 0.0,
             "credit": -balance if balance < 0 else 0.0,
             "l10n_pe_advance_id": advance.id,
         }
         rounding_vals = {
-            "name": _("Cierre por redondeo %s") % advance.name,
+            "name": label,
             "account_id": self.account_id.id,
             "partner_id": advance.partner_id.id,
             "currency_id": advance.currency_id.id,
-            "amount_currency": -residual,
+            "amount_currency": -control_amount,
             "debit": -balance if balance < 0 else 0.0,
             "credit": balance if balance > 0 else 0.0,
+            "analytic_distribution": self.analytic_distribution or False,
         }
         close_move = self.env["account.move"].create({
             "move_type": "entry",
-            "journal_id": self.journal_id.id or config.compensation_journal_id.id,
+            "journal_id": journal.id,
             "date": self.date,
-            "ref": _("Cierre por redondeo %s") % advance.name,
+            "ref": label,
             "line_ids": [(0, 0, control_vals), (0, 0, rounding_vals)],
         })
         close_move.action_post()

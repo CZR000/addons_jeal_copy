@@ -15,9 +15,13 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <!-- Menu raiz -->
+    <!--
+        Ya no es una aplicacion propia: el menu vive dentro de Contabilidad,
+        entre "Contabilidad" (secuencia 4) e "Informes" (secuencia 20).
+    -->
     <menuitem id="menu_advance_root" name="Anticipos y Revolventes"
-              sequence="90"
+              parent="accountant.menu_accounting"
+              sequence="5"
               groups="l10n_pe_advance_conciliation.group_advance_user"/>
 
     <menuitem id="menu_advance_customer" name="Anticipos de clientes"
@@ -32,7 +36,7 @@
               parent="menu_advance_root" sequence="30"
               action="action_advance_revolving"/>
 
-    <!-- Informes -->
+    <!-- Informes (dentro de Anticipos y Revolventes) -->
     <menuitem id="menu_advance_reports" name="Informes"
               parent="menu_advance_root" sequence="40"/>
 
@@ -44,13 +48,17 @@
               parent="menu_advance_reports" sequence="20"
               action="action_advance_application"/>
 
+    <menuitem id="menu_advance_statement" name="Estado de cuenta por socio"
+              parent="menu_advance_reports" sequence="25"
+              action="action_advance_statement_wizard"/>
+
     <menuitem id="menu_advance_reconcile_report" name="Cuadre contra contabilidad"
               parent="menu_advance_reports" sequence="30"
               action="action_advance_reconcile_report"/>
 
-    <!-- Configuracion -->
-    <menuitem id="menu_advance_config_root" name="Configuracion"
-              parent="menu_advance_root" sequence="50"
+    <!-- Configuracion: Contabilidad > Configuracion > Anticipos y Revolventes -->
+    <menuitem id="menu_advance_config_root" name="Anticipos y Revolventes"
+              parent="account.menu_finance_configuration" sequence="60"
               groups="l10n_pe_advance_conciliation.group_advance_manager"/>
 
     <menuitem id="menu_advance_config" name="Configuracion de anticipos y revolventes"
