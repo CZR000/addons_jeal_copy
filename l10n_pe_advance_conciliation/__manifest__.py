@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Anticipos y Revolventes",
-    "version": "18.0.1.0.1",
+    "version": "18.0.1.0.3",
     "category": "Accounting/Localizations",
     "summary": "Control de anticipos de clientes/proveedores y revolventes con "
                "documentos, saldos y conciliacion automatica",

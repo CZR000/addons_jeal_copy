@@ -90,7 +90,10 @@ class AccountMove(models.Model):
 
     def _l10n_pe_generate_advance_documents(self):
         """Al publicar: crea el documento de anticipo (producto de origen)
-        o el revolvente (haber en la cuenta de control del revolvente)."""
+        o el revolvente (haber en la cuenta de control del revolvente).
+        El mismo producto sirve para crear y para aplicar: las lineas de
+        aplicacion se reconocen por estar enlazadas a un ANTC
+        (l10n_pe_advance_id) y por tener importe negativo."""
         self.ensure_one()
         Advance = self.env["l10n_pe.advance"].sudo()
         Config = self.env["l10n_pe.advance.config"].sudo()
@@ -98,13 +101,15 @@ class AccountMove(models.Model):
         # --- Anticipos de cliente / proveedor ---------------------------
         if self.move_type in ("out_invoice", "out_refund",
                               "in_invoice", "in_refund"):
-            origin_lines = self.invoice_line_ids.filtered(
-                lambda l: l.product_id.advance_role == "origin"
-            )
             atype = (
                 "customer"
                 if self.move_type in ("out_invoice", "out_refund")
                 else "supplier"
+            )
+            origin_lines = self.invoice_line_ids.filtered(
+                lambda l: l.product_id.advance_role == "origin"
+                and not l.l10n_pe_advance_id
+                and self.currency_id.compare_amounts(l.price_subtotal, 0.0) > 0
             )
             for account in origin_lines.mapped("account_id"):
                 # No duplicar si ya existe el documento para este origen/cuenta.
@@ -117,12 +122,14 @@ class AccountMove(models.Model):
                     atype, control_account=account,
                     currency=self.currency_id, company=self.company_id,
                 )
-                control_lines = self.line_ids.filtered(
+                acc_lines = origin_lines.filtered(
                     lambda l: l.account_id == account
                 )
-                base = abs(sum(control_lines.mapped("amount_currency")))
+                base = abs(sum(acc_lines.mapped("amount_currency")))
                 if self.currency_id.is_zero(base):
                     continue
+                total = sum(acc_lines.mapped("price_total"))
+                subtotal = sum(acc_lines.mapped("price_subtotal"))
                 Advance.create({
                     "advance_type": atype,
                     "partner_id": self.commercial_partner_id.id,
@@ -134,8 +141,8 @@ class AccountMove(models.Model):
                     "origin_move_id": self.id,
                     "contract_ref": self.ref or self.invoice_origin or False,
                     "amount_base": base,
-                    "amount_tax": abs(self.amount_tax),
-                    "amount_total": abs(self.amount_total),
+                    "amount_tax": total - subtotal,
+                    "amount_total": total,
                 })
 
         # --- Revolventes -------------------------------------------------
@@ -186,8 +193,12 @@ class AccountMove(models.Model):
 
     def _l10n_pe_reconcile_advance_lines(self):
         """Concilia cada linea negativa de anticipo con el apunte de la cuenta
-        de control del anticipo origen, y registra la aplicacion."""
+        de control del anticipo origen, y registra la aplicacion.
+        Solo para facturas/NC: los asientos de compensacion (revolvente) y de
+        cierre por redondeo registran su propia aplicacion desde el wizard."""
         self.ensure_one()
+        if not self.is_invoice(include_receipts=True):
+            return
         Application = self.env["l10n_pe.advance.application"].sudo()
         app_lines = self.line_ids.filtered(
             lambda l: l.l10n_pe_advance_id

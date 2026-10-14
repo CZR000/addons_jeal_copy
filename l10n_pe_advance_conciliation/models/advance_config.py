@@ -34,7 +34,8 @@ class L10nPeAdvanceConfig(models.Model):
     )
     application_product_id = fields.Many2one(
         "product.product", string="Producto de aplicacion",
-        help="Producto de la linea negativa que descuenta el anticipo.",
+        help="Opcional. Producto de la linea negativa que descuenta el "
+             "anticipo. Si se deja vacio se usa el producto de origen.",
     )
     compensation_journal_id = fields.Many2one(
         "account.journal", string="Diario de compensacion",

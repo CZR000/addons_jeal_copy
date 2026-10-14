@@ -117,10 +117,14 @@ class L10nPeAdvanceApplyWizard(models.TransientModel):
         MoveLine = self.env["account.move.line"].with_context(
             check_move_validity=False
         )
+        rate_date = move.invoice_date or move.date
         for line in selected:
             adv = line.advance_id
             config = adv.config_id
-            product = config.application_product_id if config else False
+            product = (
+                (config.application_product_id or config.origin_product_id)
+                if config else False
+            )
             if not product:
                 raise UserError(
                     _("El anticipo %s no tiene producto de aplicacion "
@@ -128,7 +132,7 @@ class L10nPeAdvanceApplyWizard(models.TransientModel):
                 )
             saldo_move = adv.currency_id._convert(
                 adv.amount_total_residual, move.currency_id,
-                move.company_id, move.invoice_date or move.date,
+                move.company_id, rate_date,
             )
             if move.currency_id.compare_amounts(
                 line.apply_amount, saldo_move
@@ -136,6 +140,37 @@ class L10nPeAdvanceApplyWizard(models.TransientModel):
                 raise UserError(
                     _("El importe de %s supera su saldo disponible.") % adv.name
                 )
+
+            # Impuestos segun el tipo de documento (venta / compra).
+            taxes = (
+                product.supplier_taxes_id
+                if move.is_purchase_document(include_receipts=True)
+                else product.taxes_id
+            ).filtered(lambda t: t.company_id == move.company_id)
+
+            # Base a descontar: si se aplica todo el saldo, la base exacta;
+            # si es parcial, proporcional a la relacion base/total del ANTC.
+            if move.currency_id.compare_amounts(
+                line.apply_amount, saldo_move
+            ) == 0:
+                base_move = adv.currency_id._convert(
+                    adv.amount_residual, move.currency_id,
+                    move.company_id, rate_date,
+                )
+            else:
+                ratio = (
+                    adv.amount_base / adv.amount_total
+                    if adv.amount_total else 1.0
+                )
+                base_move = move.currency_id.round(line.apply_amount * ratio)
+
+            # Si los impuestos son precio-incluido va el total; si no, la base.
+            price_unit = (
+                line.apply_amount
+                if taxes and all(t.price_include for t in taxes)
+                else base_move
+            )
+
             glosa = _("ANTICIPO: FACTURA NRO. %s") % (
                 adv.origin_move_id.name or adv.name
             )
@@ -145,8 +180,8 @@ class L10nPeAdvanceApplyWizard(models.TransientModel):
                 "account_id": adv.control_account_id.id,
                 "name": glosa,
                 "quantity": -1.0,
-                "price_unit": line.apply_amount,  # IGV incluido
-                "tax_ids": [(6, 0, product.taxes_id.ids)],
+                "price_unit": price_unit,
+                "tax_ids": [(6, 0, taxes.ids)],
                 "l10n_pe_advance_id": adv.id,
             })
         # El ORM recalcula impuestos y totales al crear las lineas. Se fuerza
