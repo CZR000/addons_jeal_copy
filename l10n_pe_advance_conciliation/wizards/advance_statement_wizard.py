@@ -76,12 +76,12 @@ class L10nPeAdvanceStatementWizard(models.TransientModel):
             "advance_ids": advances.ids,
         }
         return self.env.ref(
-            "l10n_pe_advance_conciliation.action_report_advance_statement_partner"
+            "l10n_pe_advance_conciliation.action_report_advance_partner"
         ).report_action(advances, data=data)
 
 
 class ReportAdvanceStatementPartner(models.AbstractModel):
-    _name = "report.l10n_pe_advance_conciliation.report_advance_statement_partner"
+    _name = "report.l10n_pe_advance_conciliation.report_advance_partner"
     _description = "Estado de cuenta por socio (anticipos/revolventes)"
 
     @api.model
