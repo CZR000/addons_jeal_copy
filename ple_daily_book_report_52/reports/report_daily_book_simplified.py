@@ -10,10 +10,13 @@ Salidas:
   - Excel (pdf=False): una sola hoja con todas las cuentas usadas, sin
     partir en bloques, para cuadrar contra el PDF.
   - PDF (pdf=True): A4 horizontal, folios por tramo de filas x bloque de
-    columnas. Bloques por elemento PCGE (1-5, 6-8, 9 y 0), maximo
+    columnas. Bloques por elemento PCGE (1-5, 6-8 sin la 79, 79 y 9, 0), maximo
     `max_cols` cuentas por folio; tramos de `max_rows` asientos. Para cada
     tramo se imprimen sus bloques seguidos, asi un asiento se lee completo
-    en folios consecutivos. Cada folio lleva Total del folio y Total
+    en folios consecutivos. En cada folio solo se lista el asiento si tiene
+    importe en alguna cuenta de ese bloque (no se repiten filas vacias); un
+    folio sin asientos con importe muestra solo el encabezado y los
+    totales. Cada folio lleva Total del folio y Total
     acumulado (Total del periodo en el ultimo tramo); el ultimo folio
     lleva el cuadre deudor = acreedor.
 
@@ -50,6 +53,7 @@ BLOCKS = [
     ('9', 'CUENTAS ANALÍTICAS DE EXPLOTACIÓN'),
     ('0', 'CUENTAS DE ORDEN'),
 ]
+_ANALYTIC_BLOCK = 2  # indice de ('9', ...) en BLOCKS; incluye la 79
 
 # Columnas fijas (0-based)
 COL_NUM = 0
@@ -62,8 +66,8 @@ NUM_FORMAT = '#,##0.00;(#,##0.00);0.00'
 
 PDF_FOOTER_NOTE = (
     'Cargos en positivo, abonos entre paréntesis. Importe neto por cuenta '
-    'y por asiento. Los folios de un mismo tramo se leen en secuencia: el '
-    'asiento continúa en el bloque siguiente.'
+    'y por asiento. Cada asiento figura solo en los bloques de cuentas '
+    'donde tiene importe; los folios de un mismo tramo se leen en secuencia.'
 )
 
 # Glosa en el PDF: se recorta con "…" para que cada fila ocupe una linea
@@ -73,6 +77,11 @@ ACC_NAME_MAX_CHARS = 40
 
 
 def _block_index(code):
+    # La 79 (cargas imputables a cuentas de costos) es la contrapartida de
+    # las 9x en los asientos de destino: va en el bloque analitico para que
+    # el AED quede completo en un solo folio.
+    if (code or '').startswith('79'):
+        return _ANALYTIC_BLOCK
     first = (code or '')[:1]
     for idx, (digits, _name) in enumerate(BLOCKS):
         if first in digits:
@@ -467,7 +476,12 @@ class DailyBookSimplifiedReportExcel(object):
                 row = self._write_table_header(
                     ws, row, codes, [(COL_ACC, c_fin, block_label.split(' (')[0])])
 
+                # Solo los asientos con importe en alguna cuenta de este
+                # bloque; si ninguno, el folio queda con encabezado y totales.
+                block_codes = set(codes)
                 for m in tramo:
+                    if not block_codes.intersection(m.get('nets') or {}):
+                        continue
                     ws.set_row(row, 12)
                     self._write_move_row(ws, row, m, codes,
                                          glosa_max=PDF_GLOSA_MAX_CHARS)
