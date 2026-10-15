@@ -20,8 +20,8 @@
                 <field name="line_ids">
                     <list editable="bottom" create="false">
                         <field name="to_migrate"/>
-                        <field name="partner_id" readonly="1"/>
-                        <field name="origin_move_id" readonly="1"/>
+                        <field name="partner_id" readonly="1" force_save="1"/>
+                        <field name="origin_move_id" readonly="1" force_save="1"/>
                         <field name="amount_base"/>
                         <field name="currency_id" column_invisible="1"/>
                     </list>

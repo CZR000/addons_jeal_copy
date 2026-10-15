@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <form string="Cerrar saldo residual">
                 <group>
-                    <field name="advance_id" readonly="1"/>
+                    <field name="advance_id" readonly="1" force_save="1"/>
                     <field name="advance_type" readonly="1"/>
                     <field name="residual" readonly="1"/>
                     <field name="tolerance" readonly="1"/>
