@@ -232,6 +232,7 @@ class L10nPeAdvanceRevolvingWizard(models.TransientModel):
         comp_move = self.env["account.move"].create({
             "move_type": "entry",
             "journal_id": self.journal_id.id,
+            "currency_id": currency.id,
             "date": self.date,
             "ref": _("COMPENSACION REVOLVENTE %s - %s") % (
                 move.name, self.partner_id.name,

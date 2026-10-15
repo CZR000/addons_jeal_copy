@@ -134,6 +134,7 @@ class L10nPeAdvanceCloseWizard(models.TransientModel):
         close_move = self.env["account.move"].create({
             "move_type": "entry",
             "journal_id": journal.id,
+            "currency_id": advance.currency_id.id,
             "date": self.date,
             "ref": label,
             "line_ids": [(0, 0, control_vals), (0, 0, rounding_vals)],
