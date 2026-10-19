@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'PLE Purchase Book - Autorelleno No Domiciliado',
-    'version': '18.0.2.0.0',
+    'version': '18.0.2.0.1',
     'summary': 'Tipo de documento (91) en facturas No Domiciliado y control '
                'del sustento de crédito fiscal según SUNAT.',
     'description': """
@@ -23,6 +23,11 @@ Cambios 18.0.2.0.0
   antes de asignar el 91, para no afectar facturas nacionales.
 * No se modifican datos existentes: las facturas que ya tienen el 91 en el
   sustento deben corregirse manualmente.
+
+Cambios 18.0.2.0.1
+------------------
+* Los datos del sustento (tipo, serie, año DUA/DSI y correlativo) no se
+  copian al duplicar una factura.
     """,
     'author': 'Empiria',
     'website': 'https://empiria.com.pe',
