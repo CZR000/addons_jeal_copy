@@ -1,68 +1,70 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
+
+# Tipos de comprobante que SUNAT acepta en el campo 10 del RCE No Domiciliados
+# (tipo de comprobante que sustenta el credito fiscal).
+NODOM_SUSTENTO_ALLOWED_CODES = ('00', '46', '50', '51', '52', '53')
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    inv_serie = fields.Char(
-        compute='_compute_inv_serie_correlative',
-        store=True,
-        readonly=False,
-    )
-    inv_correlative = fields.Char(
-        compute='_compute_inv_serie_correlative',
-        store=True,
-        readonly=False,
-    )
+    # Tipo de documento que sustenta el credito fiscal (campo 10 del TXT).
+    # Ya no se autorrellena: lo elige el usuario y solo admite los codigos
+    # permitidos por SUNAT.
     inv_type_document = fields.Many2one(
-        compute='_compute_inv_type_document',
-        store=True,
-        readonly=False,
+        domain=[
+            ('code', 'in', NODOM_SUSTENTO_ALLOWED_CODES),
+            ('country_id.code', '=', 'PE'),
+        ],
     )
+
+    # Tipo de documento del propio comprobante (campo 4 del TXT): se mantiene
+    # el 91 para No Domiciliado, pero respetando el calculo estandar de Odoo
+    # para el resto de facturas.
     l10n_latam_document_type_id = fields.Many2one(
         compute='_compute_l10n_latam_document_type_id_nodom',
         store=True,
         readonly=False,
     )
 
-    @staticmethod
-    def _split_ref_serie_correlative(ref):
-        if not ref:
-            return None, None
-        ref = ref.strip()
-        if '-' in ref:
-            serie, correlative = ref.split('-', 1)
-            return serie.strip() or None, correlative.strip() or None
-        return '', ref or None
-    
-    @api.depends('is_nodomicilied', 'ref')
-    def _compute_inv_serie_correlative(self):
-        for move in self:
-            if not move.is_nodomicilied:
-                continue
-            serie, correlative = move._split_ref_serie_correlative(move.ref)
-            if serie is not None:
-                move.inv_serie = serie
-            if correlative is not None:
-                move.inv_correlative = correlative
+    def _nodom_document_type_depends(self):
+        base_method = getattr(type(self), '_compute_l10n_latam_document_type', None)
+        depends = getattr(base_method, '_depends', ()) if base_method else ()
+        if callable(depends):
+            depends = depends(self)
+        return tuple(depends) + ('is_nodomicilied',)
 
-    @api.depends('is_nodomicilied')
-    def _compute_inv_type_document(self):
-        doc_91 = self.env['l10n_latam.document.type'].search(
-            [('code', '=', '91'), ('country_id.code', '=', 'PE')],
-            limit=1,
-        )
-        for move in self:
-            if move.is_nodomicilied and doc_91:
-                move.inv_type_document = doc_91
-
-    @api.depends('is_nodomicilied')
+    @api.depends(lambda self: self._nodom_document_type_depends())
     def _compute_l10n_latam_document_type_id_nodom(self):
+        # Primero el calculo estandar (l10n_latam_invoice_document y herencias).
+        if hasattr(self, '_compute_l10n_latam_document_type'):
+            self._compute_l10n_latam_document_type()
+        nodom_moves = self.filtered('is_nodomicilied')
+        if not nodom_moves:
+            return
         doc_91 = self.env['l10n_latam.document.type'].search(
             [('code', '=', '91'), ('country_id.code', '=', 'PE')],
             limit=1,
         )
+        if doc_91:
+            nodom_moves.l10n_latam_document_type_id = doc_91
+
+    @api.constrains('is_nodomicilied', 'inv_type_document')
+    def _check_nodom_inv_type_document(self):
         for move in self:
-            if move.is_nodomicilied and doc_91:
-                move.l10n_latam_document_type_id = doc_91
+            if (
+                move.is_nodomicilied
+                and move.inv_type_document
+                and move.inv_type_document.code not in NODOM_SUSTENTO_ALLOWED_CODES
+            ):
+                raise ValidationError(_(
+                    "Factura %(move)s: el tipo de documento que sustenta el "
+                    "crédito fiscal (pestaña No Domiciliado) debe ser uno de "
+                    "%(codes)s según SUNAT. Valor actual: (%(code)s) %(name)s.",
+                    move=move.display_name,
+                    codes=', '.join(NODOM_SUSTENTO_ALLOWED_CODES),
+                    code=move.inv_type_document.code,
+                    name=move.inv_type_document.name,
+                ))
