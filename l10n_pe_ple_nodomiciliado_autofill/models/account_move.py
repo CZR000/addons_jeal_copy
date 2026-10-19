@@ -13,12 +13,18 @@ class AccountMove(models.Model):
     # Tipo de documento que sustenta el credito fiscal (campo 10 del TXT).
     # Ya no se autorrellena: lo elige el usuario y solo admite los codigos
     # permitidos por SUNAT.
+    # copy=False: el sustento es propio de cada factura y no debe heredarse al
+    # duplicar (ademas, una factura antigua con 91 haria fallar la copia).
     inv_type_document = fields.Many2one(
         domain=[
             ('code', 'in', NODOM_SUSTENTO_ALLOWED_CODES),
             ('country_id.code', '=', 'PE'),
         ],
+        copy=False,
     )
+    inv_serie = fields.Char(copy=False)
+    inv_year_dua_dsi = fields.Char(copy=False)
+    inv_correlative = fields.Char(copy=False)
 
     # Tipo de documento del propio comprobante (campo 4 del TXT): se mantiene
     # el 91 para No Domiciliado, pero respetando el calculo estandar de Odoo
