@@ -1,6 +1,6 @@
 {
     'name': 'Format SIRE SUNAT (Book Sale and Purchase)',
-    'version': '18.0.2.0.9',
+    'version': '18.0.2.0.10',
     'website': 'https://www.sinetics.com.pe',
     'author': 'Sinetics',
     'summary': 'This module will generate the SIRE SUNAT format for the purchase and sales books.',
