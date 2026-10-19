@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data>
+    
+        <record id="link_servicetaken_1" model="service.taken">
+            <field name="code">1</field>
+            <field name="desctiption">SERVICIO PRESTADO INTEGRAMENTE EN EL PERÚ</field>
+        </record>
+        <record id="link_servicetaken_2" model="service.taken">
+            <field name="code">2</field>
+            <field name="desctiption">SERVICIO PRESTADO PARTE EN EL PERÚ Y PARTE EN EL EXTRANJERO</field>
+        </record>
+        <record id="link_servicetaken_3" model="service.taken">
+            <field name="code">3</field>
+            <field name="desctiption">SERVICIO PRESTADO EXCLUSIVAMENTE EN EL EXTRANJERO</field>
+        </record>
+    
+    </data>
+    
+</odoo>

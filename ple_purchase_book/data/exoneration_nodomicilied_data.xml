@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data>
+    
+        <record id="link_nodomicilied_1" model="exoneration.nodomicilied">
+            <field name="code">1</field>
+            <field name="name">INTERESES PROVENIENTES DE FUENTE EXTRANJERA</field>
+            <field name="description">Los intereses provenientes de créditos de fomento otorgados directamente o mediante proveedores o intermediarios financieros por organismos internacionales o instituciones gubernamentales extranjeras.</field>
+        </record>
+
+        <record id="link_nodomicilied_2" model="exoneration.nodomicilied">
+            <field name="code">2</field>
+            <field name="name">RENTAS DE INMUEBLES INTERNACIONESL</field>
+            <field name="description">Las rentas de los inmuebles de propiedad de organismos internacionales que les sirvan de sede.</field>
+        </record>
+
+        <record id="link_nodomicilied_3" model="exoneration.nodomicilied">
+            <field name="code">3</field>
+            <field name="name">REMUNERACIONES EXTRANJERAS</field>
+            <field name="description">Las remuneraciones que perciban, por el ejercicio de su cargo en el país, los funcionarios y empleados considerados como tales dentro de la estructura organizacional de los gobiernos extranjeros, instituciones oficiales extranjeras y organismos internacionales, siempre que los convenios constitutivos así lo establezcan.</field>
+        </record>
+
+        <record id="link_nodomicilied_4" model="exoneration.nodomicilied">
+            <field name="code">4</field>
+            <field name="name">INGRESOS POR REPRESENTACIONES DEPORTIVAS EN EL EXTRANJERO</field>
+            <field name="description">Los ingresos brutos que perciben las representaciones deportivas nacionales de países extranjeros por sus actuaciones en el país.</field>
+        </record>
+
+        <record id="link_nodomicilied_5" model="exoneration.nodomicilied">
+            <field name="code">5</field>
+            <field name="name">REGALÍAS PRESTADAS DESDE EL EXTRANJERO</field>
+            <field name="description">Las regalías por asesoramiento técnico, económico, financiero, o de otra índole, prestados desde el exterior por entidades estatales u organismos internacionales.</field>
+        </record>
+        
+        <record id="link_nodomicilied_6" model="exoneration.nodomicilied">
+            <field name="code">6</field>
+            <field name="name">INGRESOS POR REPRESENTACIONES CULTURALES EN EL EXTRANJERO</field>
+            <field name="description">Los ingresos extranjeros por los espectáculos en vivo de teatro, zarzuela, conciertos de música clásica, ópera, opereta, ballet y folclor, calificados como espectáculos públicos culturales por el Instituto Nacional de Cultura, realizados en el país. brutos que perciben las representaciones de países.</field>
+        </record>
+    
+    </data>
+    
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    
+    <record id="res_country_view_form_inherit_ple_purchase_book" model="ir.ui.view">
+        <field name="name">res.country.view.form.inherit.ple_purchase_book</field>
+        <field name="model">res.country</field>
+        <field name="inherit_id" ref="base.view_country_form"/>
+        <field name="arch" type="xml">
+            <field name="code" position="after">
+                <field name="l10n_pe_sunat_code"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

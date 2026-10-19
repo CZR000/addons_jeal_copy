@@ -1,0 +1,8 @@
+"id","name","name@es","country_id"
+"account_tax_group_valor_ref","VALOR REF","VALOR REF","base.pe"
+"account_tax_group_adv","AdV","AdV","base.pe"
+"account_tax_group_percep","PERCEP","PERCEP","base.pe"
+"account_tax_group_igv_dua","IGV DUA","IGV DUA","base.pe"
+"account_tax_group_cred_no_dom","IGV 18% CREDITO NO DOMICILIADO","IGV 18% CREDITO NO DOMICILIADO","base.pe"
+"account_tax_group_no_dom","IGV 18% NO DOMICILIADO","IGV 18% NO DOMICILIADO","base.pe"
+"account_tax_group_ret","RET","RET","base.pe"

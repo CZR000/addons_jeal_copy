@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    
+    <record id="action_ple_report_purchase" model="ir.actions.act_window">
+        <field name="name">Reporte PLE Purchase</field>
+        <field name="res_model">ple.report.purchase</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem
+        id="menu_ple_purchase" 
+        name="Registro de Compras" 
+        parent="ple_sale_book.menu_ple_pe_monthly" 
+        action="action_ple_report_purchase" 
+        sequence="2"
+    />
+
+</odoo>

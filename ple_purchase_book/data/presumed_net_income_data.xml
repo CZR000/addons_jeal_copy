@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data>
+
+        <record id="presumed_net_income_01" model="presumed.net.income">
+            <field name="code">01</field>
+            <field name="name">Seguros</field>
+            <field name="percentage">7.00</field>
+            <field name="base">de las primas</field>
+        </record>
+        <record id="presumed_net_income_02" model="presumed.net.income">
+            <field name="code">02</field>
+            <field name="name">Alquiler de naves</field>
+            <field name="percentage">80.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_03" model="presumed.net.income">
+            <field name="code">03</field>
+            <field name="name">Alquiler de aeronaves</field>
+            <field name="percentage">60.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_04" model="presumed.net.income">
+            <field name="code">04</field>
+            <field name="name">Transporte aéreo internacional</field>
+            <field name="percentage">1.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_05" model="presumed.net.income">
+            <field name="code">05</field>
+            <field name="name">Transporte marítimo internacional</field>
+            <field name="percentage">2.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_06" model="presumed.net.income">
+            <field name="code">06</field>
+            <field name="name">Telecomunicaciones entre Perú y el exterior</field>
+            <field name="percentage">5.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_07" model="presumed.net.income">
+            <field name="code">07</field>
+            <field name="name">Distribución de películas cinematográficas y similares</field>
+            <field name="percentage">20.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_08" model="presumed.net.income">
+            <field name="code">08</field>
+            <field name="name">Suministro de contenedores</field>
+            <field name="percentage">15.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_09" model="presumed.net.income">
+            <field name="code">09</field>
+            <field name="name">Sobreestadía de contenedores</field>
+            <field name="percentage">80.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+        <record id="presumed_net_income_10" model="presumed.net.income">
+            <field name="code">10</field>
+            <field name="name">Cesión de derechos de retransmisión televisiva</field>
+            <field name="percentage">20.00</field>
+            <field name="base">de los ingresos brutos</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        
+        <record id="link_economic_00" model="link.economic">
+            <field name="code">00</field>
+            <field name="name">SIN VINCULACION</field>
+            <field name="description">Sin Vinculación</field>
+            <field name="law"> </field>
+        </record>
+
+        <record id="link_economic_01" model="link.economic">
+            <field name="code">01</field>
+            <field name="name">PERSONA NATURAL CON VINCULACIÓN MÁS DEL 30%</field>
+            <field name="description">Una persona natural o jurídica posea más de treinta por ciento (30%) del capital de otra persona jurídica, directamente o por intermedio de un tercero</field>
+            <field name="law">Articulo 24° numeral 1</field>
+        </record>
+
+        <record id="link_economic_02" model="link.economic">
+            <field name="code">02</field>
+            <field name="name">MÁS DEL 30% DE MÁS DE DOS PERSONAS JURÍDICAS</field>
+            <field name="description">Más del treinta por ciento (30%) del capital de dos (2) o más personas jurídicas pertenezca a una misma persona natural o jurídica, directamente o por intermedio de un tercero</field>
+            <field name="law">Articulo 24° numeral 2</field>
+        </record>
+
+        <record id="link_economic_03" model="link.economic">
+            <field name="code">03</field>
+            <field name="name">CUALESQUIERA DE LOS CASOS ANTERIORES (01 Y 02) CUANDO LA INDICADA PROPORCIÓN DEL CAPITAL PERTENEZCA A CÓNYUGES ENTRE SÍ</field>
+            <field name="description">En cualesquiera de los casos anteriores, cuando la indicada proporción del capital pertenezca a cónyuges entre sí o a personas naturales vinculadas hasta el segundo grado de consanguinidad o afinidad</field>
+            <field name="law">Articulo 24° numeral 3</field>
+        </record>
+
+        <record id="link_economic_04" model="link.economic">
+            <field name="code">04</field>
+            <field name="name">EL CAPITAL DE DOS O MÁS PERSONAS JURÍDICAS QUE PERTENEZCAN EN MÁS DEL 30% A SOCIOS COMUNES A ESTAS </field>
+            <field name="description">El capital de dos (2) o más personas jurídicas pertenezca en más del treinta por ciento (30%) a socios comunes a éstas</field>
+            <field name="law">Articulo 24° numeral 4</field>
+        </record>
+
+        <record id="link_economic_05" model="link.economic">
+            <field name="code">05</field>
+            <field name="name">PERSONAS JURÍDICAS O ENTIDADES QUE CUENTEN CON UNO O MÁS DIRECTORES, ENTRE OTROS QUE TENGAN DECISIÓN EN LOS EEFF</field>
+            <field name="description">Las personas jurídicas o entidades cuenten con una o más directores, gerentes, administradores u otros directivos comunes, que tengan poder de decisión en los acuerdos financieros, operativos y/o comerciales que se adopten</field>
+            <field name="law">Articulo 24° numeral 5</field>
+        </record>
+
+        <record id="link_economic_06" model="link.economic">
+            <field name="code">06</field>
+            <field name="name">DOS O MÁS PERSONAS NATURALES O JURÍDICAS CONSOLIDEN EEFF</field>
+            <field name="description">Dos o más personas naturales o jurídicas consoliden Estados Financieros</field>
+            <field name="law">Articulo 24° numeral 6</field>
+        </record>
+
+        <record id="link_economic_07" model="link.economic">
+            <field name="code">07</field>
+            <field name="name">CONTRATO DE COLABORACIÓN CON CONTABILIDAD INDEPENDIENTE</field>
+            <field name="description">Exista un contrato de colaboración empresarial con contabilidad independiente, en cuyo caso el contrato se considerará vinculado con aquellas partes contratantes que participen, directamente o por intermedio de un tercero, en mas del treinta por ciento (30%) en el patrimonio del contrato o cuando alguna de las partes contratantes tengan poder de decisión en los acuerdos financieros, comerciales u operativos que se adopten para el desarrollo del contrato, caso en el cual la parte contratante que ejerza el poder de decisión se encontrará vinculado con el contrato</field>
+            <field name="law">Articulo 24° numeral 7</field>
+        </record>
+
+        <record id="link_economic_08" model="link.economic">
+            <field name="code">08</field>
+            <field name="name">CONTRATO DE COLABORACIÓN SIN CONTABILIDAD INDEPENDIENTE</field>
+            <field name="description">En el caso de un contrato de colaboración empresarial sin contabilidad independiente, la vinculación entre cada una de las partes integrantes del contrato y la contraparte deberá verificarse individualmente, aplicando algunos de los criterios de vinculación establecidos en este artículo (articulo 24° del reglamento del Impuesto a la Renta). Se entiende por contraparte a la persona natural o jurídica con las que las partes integrantes celebren alguna operación con el fin de alcanzar el objeto del contrato</field>
+            <field name="law">Articulo 24° numeral 8</field>
+        </record>
+
+        <record id="link_economic_09" model="link.economic">
+            <field name="code">09</field>
+            <field name="name">CONTRATO DE ASOCIACIÓN EN PARTICIPACIÓN</field>
+            <field name="description">Exista un contrato de asociación en participación, en el que alguno de los asociados, directa o indirectamente, participe en mas del treinta por ciento (30%) en los resultados o en las utilidades de uno o varios negocios del asociante, en cuyo caso se considerará que existe vinculación entre el asociante y cada uno de sus asociados. También se considerará que existe vinculación cuando alguno de los asociados tenga poder de decisión en los aspectos financieros, comerciales u operativos en uno o varios negocios del asociante</field>
+            <field name="law">Articulo 24° numeral 9</field>
+        </record>
+
+        <record id="link_economic_10" model="link.economic">
+            <field name="code">10</field>
+            <field name="name">EMPRESA NO DOMICILIADA QUE TENGA UNO O MÁS ESTABLECIMIENTOS PERMANENTES EN EL PAÍS </field>
+            <field name="description">Una empresa no domiciliada tenga uno o mas establecimientos permanentes en el país, en cuyo caso existirá vinculación entre la empresa no domiciliada y cada uno de sus establecimientos permanentes y entre todos ellos entre si</field>
+            <field name="law">Articulo 24° numeral 10</field>
+        </record>
+
+        <record id="link_economic_11" model="link.economic">
+            <field name="code">11</field>
+            <field name="name">EMPRESA DOMICILIADA EN TERRITORIO PERUANO QUE TENGA MÁS DE DOS ESTABLECIMIENTOS PERMANENTES EN EL EXTRANJERO</field>
+            <field name="description">Una empresa domiciliada en territorio peruano tenga uno o mas establecimientos permanentes en el extranjero, en cuyo caso existirá vinculación entre la empresa domiciliada y cada uno de sus establecimientos permanentes</field>
+            <field name="law">Articulo 24° numeral 11</field>
+        </record>
+        
+        <record id="link_economic_12" model="link.economic">
+            <field name="code">12</field>
+            <field name="name">PERSONA NATURAL O JURÍDICA QUE EJERZA INFLUENCIA DOMINANTE EN LAS DECISIONES DE LOS ÓRGINAS DE ADMINISTRACIÓN</field>
+            <field name="description">Una persona natural o jurídica ejerza influencia dominante en las decisiones de los órganos de administración de una o mas personas jurídicas o entidades. En tal situación, se considerará que las personas jurídicas o entidades influidas están vinculadas entre si y con la persona natural o jurídica que ejerce dicha influencia. Se entiende que una persona natural o jurídica ejerce influencia  dominante cuando, en la adopción del acuerdo, ejerce o controla la mayoría absoluta de votos para la toma de decisiones en los órganos de administración de la persona jurídica o entidad. En el caso de decisiones relacionadas con los asuntos mencionados en el artículo 126° de la Ley General de Sociedades, existirá influencia dominante de la persona natural o jurídica que, participando en la adopción del acuerdo, por si misma o con la intervención de votos de terceros, tiene en el acto de votación el mayor número de acciones suscritas con derecho a voto, siempre y cuando cuente con, al menos, el diez por ciento (10%) de las acciones suscritas con derecho a voto. También se otorgará el tratamiento de partes vinculadas cuando una persona, empresa o entidad domiciliada en el país realice, en el ejercicio gravable anterior, el ochenta por ciento (80%) o mas de sus ventas de bienes, prestación de servicios u otro tipo de operaciones, con una persona, empresa o entidad domiciliada en el país o con personas, empresas o entidades vinculadas entre si, domiciliadas en el país, siempre que tales operaciones, a su vez, representen por lo menos el treinta por ciento (30%) de las compras o adquisiciones de la otra parte en el mismo período. Tratándose de empresas que tengan actividades por períodos mayores a tres ejercicios gravables, tales porcentajes se calcularán teniendo en cuenta el porcentaje promedio de ventas o compras, según sea el caso, realizadas en los tres ejercicios gravables inmediatos anteriores. Lo dispuesto en este párrafo no será de aplicación a las operaciones que realicen las empresas que conforman la Actividad Empresarial del Estado, en las cuales la participación del Estado sea mayor al cincuenta por ciento (50%) del capital. La vinculación, de acuerdo a alguno de los criterios establecidos en este artículo, también operará cuando la transacción sea realizada utilizando personas o entidades interpuestas, domiciliadas o no en el país con el propósito de encubrir una transacción entre partes vinculadas</field>
+            <field name="law">Articulo 24° numeral 12</field>
+        </record>
+
+    </data>
+</odoo>

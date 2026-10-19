@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="account_move_view_form_inherit_ple_purchase_book" model="ir.ui.view">
+        <field name="name">account.move.view.form.inherit.ple_purchase_book</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='exchange_rate_div']" position="after">
+                <field name="is_nodomicilied"/>
+            </xpath>
+
+            <xpath expr="//page[@name='other_info']/group" position="after">
+                <group>
+                    <group invisible="move_type in ('out_invoice','out_refund','out_receipt')">
+                        <field name="igv_withholding_indicator"/>
+                    </group>
+                </group>
+            </xpath>
+
+            <xpath expr="//page[@name='other_info']" position="before">
+                <page string="No Domiciliado" invisible = "is_nodomicilied == False">
+                    <group>
+                        <field name="inv_serie"/>
+                        <field name="inv_correlative"/>
+                        <field name="inv_type_document"/>
+                        <field name="inv_year_dua_dsi"/>
+                        <field name="inv_retention_igv"/>
+                    </group>
+                    <group>
+                        <field name="linkage_id"/>
+                        <field name="hard_rent"/>
+                        <field name="deduccion_cost"/>
+                        <field name="presumed_net_income_id"/>
+                        <field name="neto_rent"/>
+                        <field name="retention_rate"/>
+                        <field name="tax_withheld"/>
+                        <field name="cdi"/>
+                        <field name="exoneration_nodomicilied_id"/>
+                        <field name="type_rent_id"/>
+                        <field name="taken_id"/>
+                        <field name="application_article"/>
+                    </group>
+                </page>
+            </xpath>
+
+            <xpath expr="//field[@name='retention_id']" position="after">
+                <field name="types_goods_services_id" widget='selection'/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

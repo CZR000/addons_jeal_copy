@@ -1,0 +1,9 @@
+---Models in module 'ple_purchase_book'---
+---Fields in module 'ple_purchase_book'---
+---XML records in module 'ple_purchase_book'---
+UPD ir.ui.view: ple_purchase_book.ple_report_purchase_view_tree -> ple_purchase_book.ple_report_purchase_view_list
+----------------------------------------------------------------
+DEPENDS [ ple_sale_book ]
+model:  account_account
+field: UPD company_id -> company_ids
+        

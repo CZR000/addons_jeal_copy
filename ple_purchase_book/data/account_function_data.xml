@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <function name="automated_creation" model="account.journal"/>
+        <function name="automated_links" model="account.account.tag"/>
+        <function name="_link_tags_ids" model="account.tax"/>
+        <function name="create_dynamic_pe_templates" model="product.template"/>
+    </data>
+</odoo>

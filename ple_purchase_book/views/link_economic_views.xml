@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    
+    <record id="link_economic_view_form" model="ir.ui.view">
+        <field name="name">link.economic.view.form</field>
+        <field name="model">link.economic</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group>
+                        <field name="code"/>
+                        <field name="name"/>
+                    </group>
+                    <group>
+                        <field name="law"/>
+                    </group>
+                    <field name="description" placeholde="Descripción"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+</odoo>
