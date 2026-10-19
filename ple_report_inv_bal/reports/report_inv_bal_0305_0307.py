@@ -1,5 +1,4 @@
-from .report_inv_bal_base import InvBalReportBase
-from .report_inv_bal_partner import InvBalPartnerReportBase
+from .report_inv_bal_base import InvBalReportBase, InvBalPartnerReportBase
 
 
 class InvBal35ReportExcel(InvBalPartnerReportBase):

@@ -1,4 +1,4 @@
-from .report_inv_bal_base import InvBalReportBase
+from .report_inv_bal_base import InvBalReportBase, InvBalPartnerReportBase
 
 
 class InvBal32ReportExcel(InvBalReportBase):
@@ -8,7 +8,7 @@ class InvBal32ReportExcel(InvBalReportBase):
     Referencia de la cuenta (entidad financiera Tabla 3, numero de cuenta,
     tipo de moneda Tabla 4) | Saldo contable final (deudor, acreedor).
 
-    `data` es el dict devuelto por _get_data_32():
+    `data` es el dict devuelto por _get_data_02():
         {'lines': [{code, name, bank_code, account_number, currency,
                     debit, credit}], 'total_debit', 'total_credit'}
     """
@@ -81,3 +81,26 @@ class InvBal32ReportExcel(InvBalReportBase):
         ws.write_number(row, self.COL_CREDIT,
                         float(self.data.get('total_credit') or 0.0), f['total_num'])
         return row + 1
+
+
+class InvBal33ReportExcel(InvBalPartnerReportBase):
+    """Formato 3.3 - Clientes (cuenta 12)."""
+
+    FORMATO_CODE = '3.3'
+    FORMATO_TITLE = 'Detalle del saldo de la cuenta 12 - Clientes'
+    SHEET_NAME = 'F3.3 Clientes'
+    PARTY_LABEL = 'INFORMACIÓN DEL CLIENTE'
+    AMOUNT_LABEL = 'MONTO DE LA CUENTA POR COBRAR'
+    DATE_LABEL = 'FECHA DE EMISIÓN DEL COMPROBANTE DE PAGO'
+
+
+class InvBal34ReportExcel(InvBalPartnerReportBase):
+    """Formato 3.4 - Cuentas por cobrar al personal y accionistas (cuenta 14)."""
+
+    FORMATO_CODE = '3.4'
+    FORMATO_TITLE = ('Detalle del saldo de la cuenta 14 - Cuentas por cobrar al '
+                     'personal, a los accionistas (socios), directores y gerentes')
+    SHEET_NAME = 'F3.4 Personal y Accionistas'
+    PARTY_LABEL = 'INFORMACIÓN DEL ACCIONISTA, SOCIO O PERSONAL'
+    AMOUNT_LABEL = 'MONTO DE LA CUENTA POR COBRAR'
+    DATE_LABEL = 'FECHA DE INICIO DE LA OPERACIÓN'

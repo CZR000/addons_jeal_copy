@@ -2,7 +2,7 @@ import logging
 
 from odoo import models, _
 
-from ..reports.report_inv_bal_0314_0316 import (
+from ..reports.report_inv_bal_0314_0315 import (
     InvBal314ReportExcel,
     InvBal315ReportExcel,
 )
@@ -10,7 +10,7 @@ from ..reports.report_inv_bal_0314_0316 import (
 _logger = logging.getLogger(__name__)
 
 
-class PleReportInvBalBook0314To0316(models.Model):
+class PleReportInvBalBook0314To0315(models.Model):
     """Formatos 3.14 y 3.15 del Libro de Inventarios y Balances.
 
     Convencion de signo igual que 3.10 a 3.13: saldos como (debe - haber),
@@ -28,8 +28,7 @@ class PleReportInvBalBook0314To0316(models.Model):
 
     def _prepare_report_14(self):
         self.ensure_one()
-        report = InvBal314ReportExcel(self, self._get_data_314())
-        return report
+        return InvBal314ReportExcel(self, self._get_data_14())
 
     def action_generate_15(self):
         """Formato 3.15 - Ganancias diferidas (cuenta 49)."""
@@ -37,13 +36,12 @@ class PleReportInvBalBook0314To0316(models.Model):
 
     def _prepare_report_15(self):
         self.ensure_one()
-        report = InvBal315ReportExcel(self, self._get_data_315())
-        return report
+        return InvBal315ReportExcel(self, self._get_data_15())
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.14 (47 - Beneficios sociales de los trabajadores)
+    # DATA - Formato 3.14 Beneficios sociales de los trabajadores (cuenta 47)
     # ------------------------------------------------------------------
-    def _get_data_314(self):
+    def _get_data_14(self):
         """Saldo final al `date_end` por trabajador de las cuentas 47
         (estructura del formato original del cliente). Las lineas sin
         tercero se agrupan en una fila "VARIOS".
@@ -82,9 +80,9 @@ class PleReportInvBalBook0314To0316(models.Model):
         }
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.15 (49 - Ganancias diferidas)
+    # DATA - Formato 3.15 Ganancias diferidas (cuenta 49)
     # ------------------------------------------------------------------
-    def _get_data_315(self):
+    def _get_data_15(self):
         """Saldo final al `date_end` por subcuenta de la 49.
 
         La cuenta 49 no es conciliable y los cierres/aperturas

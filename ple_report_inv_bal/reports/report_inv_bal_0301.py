@@ -8,7 +8,7 @@ class InvBal31ReportExcel(InvBalReportBase):
     (derecha), cada una con secciones, lineas y totales, al cierre del
     periodo (date_end).
 
-    `data` es el dict devuelto por PleReportInvBal._get_data_31():
+    `data` es el dict devuelto por _get_data_01():
         {'activo': [(tipo, label, valor), ...],
          'pasivo': [(tipo, label, valor), ...]}
     """

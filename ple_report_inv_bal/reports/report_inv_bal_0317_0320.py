@@ -326,6 +326,7 @@ class InvBal320ReportExcel(_StatementReportBase):
         ('section', 'GASTOS OPERACIONALES', None),
         ('line', 'Gastos de Administración', 'gastos_adm'),
         ('line', 'Gastos de Venta', 'gastos_venta'),
+        ('line', 'Gastos de Distribución', 'gastos_distribucion'),
         ('total', 'Utilidad Operativa', 'utilidad_operativa'),
         ('blank', '', None),
         ('section', 'OTROS INGRESOS (GASTOS)', None),

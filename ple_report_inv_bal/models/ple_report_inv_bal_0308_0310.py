@@ -25,8 +25,7 @@ class PleReportInvBalBook0308To0310(models.Model):
 
     def _prepare_report_08(self):
         self.ensure_one()
-        report = InvBal38ReportExcel(self, self._get_data_38())
-        return report
+        return InvBal38ReportExcel(self, self._get_data_08())
 
     def action_generate_09(self):
         """Formato 3.9 - Intangibles (cuenta 34)."""
@@ -34,8 +33,7 @@ class PleReportInvBalBook0308To0310(models.Model):
 
     def _prepare_report_09(self):
         self.ensure_one()
-        report = InvBal39ReportExcel(self, self._get_data_39())
-        return report
+        return InvBal39ReportExcel(self, self._get_data_09())
 
     def action_generate_10(self):
         """Formato 3.10 - Tributos por pagar (cuenta 40)."""
@@ -43,55 +41,12 @@ class PleReportInvBalBook0308To0310(models.Model):
 
     def _prepare_report_10(self):
         self.ensure_one()
-        report = InvBal310ReportExcel(self, self._get_data_310())
-        return report
+        return InvBal310ReportExcel(self, self._get_data_10())
 
     # ------------------------------------------------------------------
-    # Helpers
+    # DATA - Formato 3.8 Valores (cuenta 31)
     # ------------------------------------------------------------------
-    def _partner_identity(self, partner, empty_label):
-        """(tipo doc Tabla 2, numero, nombre) del partner comercial, o una
-        fila generica si no hay tercero."""
-        if not partner:
-            return '0', '-', empty_label
-        id_type = getattr(partner, 'l10n_latam_identification_type_id', False)
-        doc_type = (getattr(id_type, 'l10n_pe_vat_code', False) or '0') if id_type else '0'
-        return doc_type, partner.vat or '-', partner.name or ''
-
-    def _balances_by_account_partner(self, date_to, account_ids):
-        """Saldo (debe - haber) por (account_id, partner comercial) hasta
-        `date_to`. Retorna {(account_id, partner_id or 0): saldo}."""
-        self.ensure_one()
-        if not account_ids:
-            return {}
-        self.env.cr.execute("""
-            SELECT aml.account_id,
-                   COALESCE(rp.commercial_partner_id, rp.id, 0) AS partner_id,
-                   COALESCE(SUM(aml.debit - aml.credit), 0.0)
-              FROM account_move_line aml
-              JOIN account_move am ON am.id = aml.move_id
-              LEFT JOIN res_partner rp ON rp.id = aml.partner_id
-             WHERE am.company_id = %(company)s
-               AND am.state = 'posted'
-               AND am.id NOT IN %(excluded)s
-               AND aml.date <= %(date_to)s
-               AND aml.account_id IN %(accounts)s
-             GROUP BY aml.account_id, COALESCE(rp.commercial_partner_id, rp.id, 0)
-        """, {
-            'company': self.company_id.id,
-            'date_to': date_to,
-            'accounts': tuple(account_ids),
-            'excluded': self._get_excluded_move_ids(),
-        })
-        return {
-            (account_id, partner_id or 0): float(balance or 0.0)
-            for account_id, partner_id, balance in self.env.cr.fetchall()
-        }
-
-    # ------------------------------------------------------------------
-    # DATA - Formato 3.8 (cuenta 31 - Valores)
-    # ------------------------------------------------------------------
-    def _get_data_38(self):
+    def _get_data_08(self):
         """Valores al `date_end` por emisor y cuenta.
 
         - Costo total: saldo de las cuentas 31.
@@ -147,9 +102,9 @@ class PleReportInvBalBook0308To0310(models.Model):
         }
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.9 (cuenta 34 - Intangibles)
+    # DATA - Formato 3.9 Intangibles (cuenta 34)
     # ------------------------------------------------------------------
-    def _get_data_39(self):
+    def _get_data_09(self):
         """Intangibles al `date_end`, una fila por clase de intangible del
         PCGE (341 concesiones/licencias, 342 patentes, 343 software, ...).
 
@@ -228,6 +183,34 @@ class PleReportInvBalBook0308To0310(models.Model):
             'total_net': sum(r['net'] for r in lines),
         }
 
+    # ------------------------------------------------------------------
+    # DATA - Formato 3.10 Tributos por pagar (cuenta 40)
+    # ------------------------------------------------------------------
+    def _get_data_10(self):
+        """Saldo final al `date_end` de cada subcuenta de la 40 con
+        movimiento. El saldo se informa como (debe - haber), igual que el
+        ejemplo de contabilidad: los tributos por pagar salen en negativo.
+        """
+        self.ensure_one()
+        accounts = self._get_accounts_by_prefix(['40'])
+        balances = self._balances_by_account(self.date_end, accounts.ids)
+        lines = [
+            {
+                'code': account.code or '',
+                'name': account.name or '',
+                'balance': balances[account.id],
+            }
+            for account in accounts
+            if account.id in balances
+        ]
+        return {
+            'lines': lines,
+            'total': sum(r['balance'] for r in lines),
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers del grupo (solo los usan estos formatos)
+    # ------------------------------------------------------------------
     def _first_debit_date_by_account(self, account_ids):
         """Fecha del primer cargo (debe > 0) publicado por cuenta hasta
         `date_end`. Retorna {account_id: date}."""
@@ -250,28 +233,3 @@ class PleReportInvBalBook0308To0310(models.Model):
             'accounts': tuple(account_ids),
         })
         return dict(self.env.cr.fetchall())
-
-    # ------------------------------------------------------------------
-    # DATA - Formato 3.10 (cuenta 40 - Tributos por pagar)
-    # ------------------------------------------------------------------
-    def _get_data_310(self):
-        """Saldo final al `date_end` de cada subcuenta de la 40 con
-        movimiento. El saldo se informa como (debe - haber), igual que el
-        ejemplo de contabilidad: los tributos por pagar salen en negativo.
-        """
-        self.ensure_one()
-        accounts = self._get_accounts_by_prefix(['40'])
-        balances = self._balances_by_account(self.date_end, accounts.ids)
-        lines = [
-            {
-                'code': account.code or '',
-                'name': account.name or '',
-                'balance': balances[account.id],
-            }
-            for account in accounts
-            if account.id in balances
-        ]
-        return {
-            'lines': lines,
-            'total': sum(r['balance'] for r in lines),
-        }

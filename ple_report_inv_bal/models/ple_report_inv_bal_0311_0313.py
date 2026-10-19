@@ -30,8 +30,7 @@ class PleReportInvBalBook0311To0313(models.Model):
 
     def _prepare_report_11(self):
         self.ensure_one()
-        report = InvBal311ReportExcel(self, self._get_data_311())
-        return report
+        return InvBal311ReportExcel(self, self._get_data_11())
 
     def action_generate_12(self):
         """Formato 3.12 - Proveedores (cuenta 42)."""
@@ -39,9 +38,7 @@ class PleReportInvBalBook0311To0313(models.Model):
 
     def _prepare_report_12(self):
         self.ensure_one()
-        data = self._get_open_items(['42'], date_source='invoice')
-        report = InvBal312ReportExcel(self, data)
-        return report
+        return InvBal312ReportExcel(self, self._get_data_12())
 
     def action_generate_13(self):
         """Formato 3.13 - Cuentas por pagar diversas (46 y 47)."""
@@ -49,16 +46,12 @@ class PleReportInvBalBook0311To0313(models.Model):
 
     def _prepare_report_13(self):
         self.ensure_one()
-        data = self._get_open_items(
-            ['46', '47'], date_source='invoice', split_no_partner=True,
-        )
-        report = InvBal313ReportExcel(self, data)
-        return report
+        return InvBal313ReportExcel(self, self._get_data_13())
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.11 (cuenta 41)
+    # DATA - Formato 3.11 Remuneraciones y participaciones por pagar (cuenta 41)
     # ------------------------------------------------------------------
-    def _get_data_311(self):
+    def _get_data_11(self):
         """Saldo final al `date_end` por subcuenta de la 41 y trabajador
         (partner comercial). Las lineas sin tercero se agrupan en una fila
         "VARIOS" por subcuenta.
@@ -102,3 +95,19 @@ class PleReportInvBalBook0311To0313(models.Model):
             'lines': lines,
             'total': sum(r['balance'] for r in lines),
         }
+
+    # ------------------------------------------------------------------
+    # DATA - Formato 3.12 Proveedores (cuenta 42)
+    # ------------------------------------------------------------------
+    def _get_data_12(self):
+        """Datos del formato 3.12 - Proveedores (cuenta 42)."""
+        self.ensure_one()
+        return self._get_open_items(['42'], date_source='invoice')
+
+    # ------------------------------------------------------------------
+    # DATA - Formato 3.13 Cuentas por pagar diversas (cuentas 46 y 47)
+    # ------------------------------------------------------------------
+    def _get_data_13(self):
+        """Datos del formato 3.13 - Cuentas por pagar diversas (46 y 47)."""
+        self.ensure_one()
+        return self._get_open_items(['46', '47'], date_source='invoice', split_no_partner=True)

@@ -43,9 +43,7 @@ class PleReportInvBalBook0305To0307(models.Model):
 
     def _prepare_report_05(self):
         self.ensure_one()
-        data = self._get_open_items(['16'], date_source='invoice')
-        report = InvBal35ReportExcel(self, data)
-        return report
+        return InvBal35ReportExcel(self, self._get_data_05())
 
     def action_generate_06(self):
         """Formato 3.6 - Estimacion de cobranza dudosa (cuenta 19)."""
@@ -53,8 +51,7 @@ class PleReportInvBalBook0305To0307(models.Model):
 
     def _prepare_report_06(self):
         self.ensure_one()
-        report = InvBal36ReportExcel(self, self._get_data_36())
-        return report
+        return InvBal36ReportExcel(self, self._get_data_06())
 
     def action_generate_07(self):
         """Formato 3.7 - Mercaderias y productos terminados (20 y 21)."""
@@ -62,13 +59,20 @@ class PleReportInvBalBook0305To0307(models.Model):
 
     def _prepare_report_07(self):
         self.ensure_one()
-        report = InvBal37ReportExcel(self, self._get_data_37())
-        return report
+        return InvBal37ReportExcel(self, self._get_data_07())
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.6 (cuenta 19)
+    # DATA - Formato 3.5 Cuentas por cobrar diversas (cuenta 16)
     # ------------------------------------------------------------------
-    def _get_data_36(self):
+    def _get_data_05(self):
+        """Datos del formato 3.5 - Cuentas por cobrar diversas (cuenta 16)."""
+        self.ensure_one()
+        return self._get_open_items(['16'], date_source='invoice')
+
+    # ------------------------------------------------------------------
+    # DATA - Formato 3.6 Estimacion de cobranza dudosa (cuenta 19)
+    # ------------------------------------------------------------------
+    def _get_data_06(self):
         """Provisiones pendientes de la cuenta 19 al `date_end`, por deudor
         y documento. Las lineas sin tercero se muestran por asiento para
         no perder el numero de documento. El monto provisionado se muestra
@@ -83,9 +87,9 @@ class PleReportInvBalBook0305To0307(models.Model):
         return data
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.7 (cuentas 20 y 21)
+    # DATA - Formato 3.7 Mercaderias y productos terminados (cuentas 20 y 21)
     # ------------------------------------------------------------------
-    def _get_data_37(self):
+    def _get_data_07(self):
         """Existencias por producto al cierre de `date_end`, tomadas de la
         valorizacion de inventario de Odoo (stock.valuation.layer), igual
         que el reporte "Valoracion de inventario" a una fecha.
@@ -173,6 +177,9 @@ class PleReportInvBalBook0305To0307(models.Model):
             'method': method,
         }
 
+    # ------------------------------------------------------------------
+    # Helpers del grupo (solo los usan estos formatos)
+    # ------------------------------------------------------------------
     def _end_of_day_utc(self, day):
         """Ultimo instante de `day` en la zona horaria del usuario,
         convertido a UTC naive (como se guarda create_date)."""

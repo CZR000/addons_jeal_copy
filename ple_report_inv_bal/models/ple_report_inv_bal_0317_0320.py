@@ -108,6 +108,7 @@ ECPN_COLUMNS = [
 # no tengan linea propia caen en "otros gastos": su neto es justamente lo
 # NO destinado a la clase 9, asi la utilidad neta siempre es la real.
 # CONFIRMAR / AJUSTAR con contabilidad segun su esquema de destinos.
+# 91, 92 y 93: gastos de distribucion (confirmado por contabilidad, 19/10/2026).
 # ---------------------------------------------------------------------------
 FUNCTION_MAP = {
     '70': 'ventas',
@@ -116,9 +117,9 @@ FUNCTION_MAP = {
     '75': 'otros_ing_op',
     '69': 'costo_ventas',
     '90': 'costo_ventas',
-    '91': 'costo_ventas',
-    '92': 'costo_ventas',
-    '93': 'costo_ventas',
+    '91': 'gastos_distribucion',
+    '92': 'gastos_distribucion',
+    '93': 'gastos_distribucion',
     '94': 'gastos_adm',
     '95': 'gastos_venta',
     '77': 'ingresos_fin',
@@ -164,8 +165,7 @@ class PleReportInvBalBook0317To0320(models.Model):
 
     def _prepare_report_17(self):
         self.ensure_one()
-        report = InvBal317ReportExcel(self, self._get_data_317())
-        return report
+        return InvBal317ReportExcel(self, self._get_data_17())
 
     def action_generate_18(self):
         """Formato 3.18 - Estado de flujos de efectivo."""
@@ -173,8 +173,7 @@ class PleReportInvBalBook0317To0320(models.Model):
 
     def _prepare_report_18(self):
         self.ensure_one()
-        report = InvBal318ReportExcel(self, self._get_data_318())
-        return report
+        return InvBal318ReportExcel(self, self._get_data_18())
 
     def action_generate_19(self):
         """Formato 3.19 - Estado de cambios en el patrimonio neto."""
@@ -182,8 +181,7 @@ class PleReportInvBalBook0317To0320(models.Model):
 
     def _prepare_report_19(self):
         self.ensure_one()
-        report = InvBal319ReportExcel(self, self._get_data_319())
-        return report
+        return InvBal319ReportExcel(self, self._get_data_19())
 
     def action_generate_20(self):
         """Formato 3.20 - Estado de resultados por funcion."""
@@ -191,95 +189,12 @@ class PleReportInvBalBook0317To0320(models.Model):
 
     def _prepare_report_20(self):
         self.ensure_one()
-        report = InvBal320ReportExcel(self, self._get_data_320())
-        return report
-
-    # ------------------------------------------------------------------
-    # Helpers del periodo
-    # ------------------------------------------------------------------
-    def _period_excluded_move_ids(self):
-        """Asientos que no son movimiento del periodo: cierres/aperturas
-        dentro del periodo + cierre de la fecha fin."""
-        self.ensure_one()
-        ids = set(self._get_period_closing_opening_move_ids())
-        ids |= set(self._get_excluded_move_ids())
-        ids.discard(0)
-        return tuple(ids) or (0,)
-
-    def _period_initial_balances(self):
-        """Saldo inicial por account_id "despues de la apertura": saldo al
-        dia anterior a date_start + lineas de los asientos de cierre/apertura
-        del periodo (excepto el cierre de date_end, que no se considera)."""
-        self.ensure_one()
-        balances = self._balances_by_account(self.date_start - timedelta(days=1))
-        adjust_ids = set(self._get_period_closing_opening_move_ids())
-        adjust_ids -= set(self._get_excluded_move_ids())
-        adjust_ids.discard(0)
-        if adjust_ids:
-            self.env.cr.execute("""
-                SELECT account_id, COALESCE(SUM(debit - credit), 0.0)
-                  FROM account_move_line
-                 WHERE move_id IN %(moves)s
-                 GROUP BY account_id
-            """, {'moves': tuple(adjust_ids)})
-            for account_id, amount in self.env.cr.fetchall():
-                balances[account_id] = balances.get(account_id, 0.0) + float(amount or 0.0)
-        return balances
-
-    def _period_movements(self):
-        """Movimientos del periodo por account_id: {id: (debe, haber)}."""
-        self.ensure_one()
-        self.env.cr.execute("""
-            SELECT aml.account_id,
-                   COALESCE(SUM(aml.debit), 0.0),
-                   COALESCE(SUM(aml.credit), 0.0)
-              FROM account_move_line aml
-              JOIN account_move am ON am.id = aml.move_id
-             WHERE am.company_id = %(company)s
-               AND am.state = 'posted'
-               AND am.date >= %(date_from)s
-               AND am.date <= %(date_to)s
-               AND am.id NOT IN %(excluded)s
-             GROUP BY aml.account_id
-        """, {
-            'company': self.company_id.id,
-            'date_from': self.date_start,
-            'date_to': self.date_end,
-            'excluded': self._period_excluded_move_ids(),
-        })
-        return {
-            account_id: (float(debit or 0.0), float(credit or 0.0))
-            for account_id, debit, credit in self.env.cr.fetchall()
-        }
-
-    def _codes_by_account_id(self, account_ids):
-        """{account_id: codigo} resuelto para la compania del reporte."""
-        accounts = self.env['account.account'].with_company(
-            self.company_id
-        ).browse(list(account_ids))
-        return {a.id: a.code or '' for a in accounts}
-
-    def _sum_by_prefix(self, amounts_by_code, prefixes):
-        return sum(
-            amount for code, amount in amounts_by_code.items()
-            if any(code.startswith(p) for p in prefixes)
-        )
-
-    def _period_net_result(self, movements=None, codes=None):
-        """Utilidad (+) o perdida (-) del periodo: -(debe - haber) de las
-        cuentas de resultados, sin cierres/aperturas ni la 89."""
-        self.ensure_one()
-        movements = movements if movements is not None else self._period_movements()
-        codes = codes if codes is not None else self._codes_by_account_id(movements)
-        return -sum(
-            debit - credit for account_id, (debit, credit) in movements.items()
-            if self._is_pl_code(codes.get(account_id, ''))
-        )
+        return InvBal320ReportExcel(self, self._get_data_20())
 
     # ------------------------------------------------------------------
     # DATA - Formato 3.17 Balance de comprobacion
     # ------------------------------------------------------------------
-    def _get_data_317(self):
+    def _get_data_17(self):
         """Balance de comprobacion por subcuenta (4 digitos).
 
         Columnas de clasificacion: cuentas de balance (clases 1-5 y la 89)
@@ -373,7 +288,7 @@ class PleReportInvBalBook0317To0320(models.Model):
     # ------------------------------------------------------------------
     # DATA - Formato 3.18 Estado de flujos de efectivo
     # ------------------------------------------------------------------
-    def _get_data_318(self):
+    def _get_data_18(self):
         """Flujos de efectivo del periodo por el metodo directo, con la
         conciliacion del resultado neto (metodo indirecto). En la
         conciliacion, "Otros" cuadra contra el flujo de operacion directo.
@@ -485,7 +400,7 @@ class PleReportInvBalBook0317To0320(models.Model):
     # ------------------------------------------------------------------
     # DATA - Formato 3.19 Estado de cambios en el patrimonio neto
     # ------------------------------------------------------------------
-    def _get_data_319(self):
+    def _get_data_19(self):
         """Saldos inicial y final por columna de patrimonio y movimientos
         del periodo. Fila 10 = utilidad neta del periodo (en resultados
         acumulados). El resto del movimiento de cada columna va a:
@@ -530,7 +445,7 @@ class PleReportInvBalBook0317To0320(models.Model):
     # ------------------------------------------------------------------
     # DATA - Formato 3.20 Estado de resultados por funcion
     # ------------------------------------------------------------------
-    def _get_data_320(self):
+    def _get_data_20(self):
         """Estado de resultados por funcion del periodo. Ingresos en
         positivo y gastos en negativo; la utilidad neta coincide con la del
         3.18 y la fila 10 del 3.19."""
@@ -550,7 +465,8 @@ class PleReportInvBalBook0317To0320(models.Model):
 
         total_ingresos = v('ventas') + v('otros_ing_op')
         utilidad_bruta = total_ingresos + v('costo_ventas')
-        utilidad_operativa = utilidad_bruta + v('gastos_adm') + v('gastos_venta')
+        utilidad_operativa = (utilidad_bruta + v('gastos_adm') + v('gastos_venta')
+                              + v('gastos_distribucion'))
         antes_part = (utilidad_operativa + v('ingresos_fin') + v('gastos_fin')
                       + v('otros_ingresos') + v('otros_gastos'))
         antes_extra = antes_part + v('participaciones') + v('impuesto_renta')
@@ -566,3 +482,85 @@ class PleReportInvBalBook0317To0320(models.Model):
             'utilidad_atribuible': utilidad_neta,
         })
         return values
+
+    # ------------------------------------------------------------------
+    # Helpers del grupo (solo los usan estos formatos)
+    # ------------------------------------------------------------------
+    def _period_excluded_move_ids(self):
+        """Asientos que no son movimiento del periodo: cierres/aperturas
+        dentro del periodo + cierre de la fecha fin."""
+        self.ensure_one()
+        ids = set(self._get_period_closing_opening_move_ids())
+        ids |= set(self._get_excluded_move_ids())
+        ids.discard(0)
+        return tuple(ids) or (0,)
+
+    def _period_initial_balances(self):
+        """Saldo inicial por account_id "despues de la apertura": saldo al
+        dia anterior a date_start + lineas de los asientos de cierre/apertura
+        del periodo (excepto el cierre de date_end, que no se considera)."""
+        self.ensure_one()
+        balances = self._balances_by_account(self.date_start - timedelta(days=1))
+        adjust_ids = set(self._get_period_closing_opening_move_ids())
+        adjust_ids -= set(self._get_excluded_move_ids())
+        adjust_ids.discard(0)
+        if adjust_ids:
+            self.env.cr.execute("""
+                SELECT account_id, COALESCE(SUM(debit - credit), 0.0)
+                  FROM account_move_line
+                 WHERE move_id IN %(moves)s
+                 GROUP BY account_id
+            """, {'moves': tuple(adjust_ids)})
+            for account_id, amount in self.env.cr.fetchall():
+                balances[account_id] = balances.get(account_id, 0.0) + float(amount or 0.0)
+        return balances
+
+    def _period_movements(self):
+        """Movimientos del periodo por account_id: {id: (debe, haber)}."""
+        self.ensure_one()
+        self.env.cr.execute("""
+            SELECT aml.account_id,
+                   COALESCE(SUM(aml.debit), 0.0),
+                   COALESCE(SUM(aml.credit), 0.0)
+              FROM account_move_line aml
+              JOIN account_move am ON am.id = aml.move_id
+             WHERE am.company_id = %(company)s
+               AND am.state = 'posted'
+               AND am.date >= %(date_from)s
+               AND am.date <= %(date_to)s
+               AND am.id NOT IN %(excluded)s
+             GROUP BY aml.account_id
+        """, {
+            'company': self.company_id.id,
+            'date_from': self.date_start,
+            'date_to': self.date_end,
+            'excluded': self._period_excluded_move_ids(),
+        })
+        return {
+            account_id: (float(debit or 0.0), float(credit or 0.0))
+            for account_id, debit, credit in self.env.cr.fetchall()
+        }
+
+    def _codes_by_account_id(self, account_ids):
+        """{account_id: codigo} resuelto para la compania del reporte."""
+        accounts = self.env['account.account'].with_company(
+            self.company_id
+        ).browse(list(account_ids))
+        return {a.id: a.code or '' for a in accounts}
+
+    def _sum_by_prefix(self, amounts_by_code, prefixes):
+        return sum(
+            amount for code, amount in amounts_by_code.items()
+            if any(code.startswith(p) for p in prefixes)
+        )
+
+    def _period_net_result(self, movements=None, codes=None):
+        """Utilidad (+) o perdida (-) del periodo: -(debe - haber) de las
+        cuentas de resultados, sin cierres/aperturas ni la 89."""
+        self.ensure_one()
+        movements = movements if movements is not None else self._period_movements()
+        codes = codes if codes is not None else self._codes_by_account_id(movements)
+        return -sum(
+            debit - credit for account_id, (debit, credit) in movements.items()
+            if self._is_pl_code(codes.get(account_id, ''))
+        )
