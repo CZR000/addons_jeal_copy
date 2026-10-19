@@ -5,14 +5,13 @@ from odoo import models, _
 from ..reports.report_inv_bal_0314_0316 import (
     InvBal314ReportExcel,
     InvBal315ReportExcel,
-    InvBal316ReportExcel,
 )
 
 _logger = logging.getLogger(__name__)
 
 
 class PleReportInvBalBook0314To0316(models.Model):
-    """Formatos 3.14, 3.15 y 3.16 del Libro de Inventarios y Balances.
+    """Formatos 3.14 y 3.15 del Libro de Inventarios y Balances.
 
     Convencion de signo igual que 3.10 a 3.13: saldos como (debe - haber),
     de modo que el total coincide con el saldo contable.
@@ -24,7 +23,7 @@ class PleReportInvBalBook0314To0316(models.Model):
     # Acciones
     # ------------------------------------------------------------------
     def action_generate_14(self):
-        """Formato 3.14 - Beneficios sociales de los trabajadores (415)."""
+        """Formato 3.14 - Beneficios sociales de los trabajadores (cuenta 47)."""
         return self._generate_single('14')
 
     def _prepare_report_14(self):
@@ -33,7 +32,7 @@ class PleReportInvBalBook0314To0316(models.Model):
         return report
 
     def action_generate_15(self):
-        """Formato 3.15 - Activo diferido (37) y pasivo diferido (49)."""
+        """Formato 3.15 - Ganancias diferidas (cuenta 49)."""
         return self._generate_single('15')
 
     def _prepare_report_15(self):
@@ -41,28 +40,18 @@ class PleReportInvBalBook0314To0316(models.Model):
         report = InvBal315ReportExcel(self, self._get_data_315())
         return report
 
-    def action_generate_16(self):
-        """Formato 3.16 - Capital (50)."""
-        return self._generate_single('16')
-
-    def _prepare_report_16(self):
-        self.ensure_one()
-        report = InvBal316ReportExcel(self, self._get_data_316())
-        return report
-
     # ------------------------------------------------------------------
-    # DATA - Formato 3.14 (415 - Beneficios sociales por pagar, PCGE 2019)
+    # DATA - Formato 3.14 (47 - Beneficios sociales de los trabajadores)
     # ------------------------------------------------------------------
     def _get_data_314(self):
-        """Saldo final al `date_end` por trabajador de las cuentas 415
-        (en el PCGE 2019 los beneficios sociales estan en la 415; la 47 es
-        cuentas por pagar diversas relacionadas). Las lineas sin tercero se
-        agrupan en una fila "VARIOS".
+        """Saldo final al `date_end` por trabajador de las cuentas 47
+        (estructura del formato original del cliente). Las lineas sin
+        tercero se agrupan en una fila "VARIOS".
 
         Retorna {'lines': [{doc_type, doc_number, name, balance}], 'total'}.
         """
         self.ensure_one()
-        accounts = self._get_accounts_by_prefix(['415'])
+        accounts = self._get_accounts_by_prefix(['47'])
         balances = self._balances_by_account_partner(self.date_end, accounts.ids)
 
         by_partner = {}
@@ -93,12 +82,12 @@ class PleReportInvBalBook0314To0316(models.Model):
         }
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.15 (37 Activo diferido / 49 Pasivo diferido)
+    # DATA - Formato 3.15 (49 - Ganancias diferidas)
     # ------------------------------------------------------------------
     def _get_data_315(self):
-        """Saldo final al `date_end` por subcuenta de la 37 y la 49.
+        """Saldo final al `date_end` por subcuenta de la 49.
 
-        Las cuentas 37 y 49 no son conciliables y los cierres/aperturas
+        La cuenta 49 no es conciliable y los cierres/aperturas
         anuales reagrupan sus saldos por cuenta, por lo que el detalle es
         por subcuenta. El numero de comprobante relacionado se informa
         como "-".
@@ -106,7 +95,7 @@ class PleReportInvBalBook0314To0316(models.Model):
         Retorna {'lines': [{concept, doc_ref, balance}], 'total'}.
         """
         self.ensure_one()
-        accounts = self._get_accounts_by_prefix(['37', '49'])
+        accounts = self._get_accounts_by_prefix(['49'])
         balances = self._balances_by_account(self.date_end, accounts.ids)
         lines = [
             {
@@ -120,29 +109,4 @@ class PleReportInvBalBook0314To0316(models.Model):
         return {
             'lines': lines,
             'total': sum(r['balance'] for r in lines),
-        }
-
-    # ------------------------------------------------------------------
-    # DATA - Formato 3.16 (50 - Capital)
-    # ------------------------------------------------------------------
-    def _get_data_316(self):
-        """Capital social al `date_end` (saldo acreedor de la 50, en
-        positivo).
-
-        El valor nominal, el numero de acciones suscritas/pagadas, el
-        numero de accionistas y la estructura de participacion no se
-        registran hoy en Odoo; se dejan en blanco hasta definir donde los
-        carga contabilidad.
-        """
-        self.ensure_one()
-        accounts = self._get_accounts_by_prefix(['50'])
-        balances = self._balances_by_account(self.date_end, accounts.ids)
-        capital = -sum(balances.values())
-        return {
-            'capital': capital,
-            'nominal_value': None,
-            'subscribed_shares': None,
-            'paid_shares': None,
-            'shareholders_count': None,
-            'shareholders': [],
         }

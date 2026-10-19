@@ -71,11 +71,10 @@ class InvBal311ReportExcel(InvBalReportBase):
 
 
 class InvBal312ReportExcel(InvBalPartnerReportBase):
-    """Formato 3.12 - Cuentas por pagar comerciales (cuentas 42 y 43)."""
+    """Formato 3.12 - Proveedores (cuenta 42)."""
 
     FORMATO_CODE = '3.12'
-    FORMATO_TITLE = ('Detalle del saldo de la cuenta 42 y 43 - Cuentas por pagar '
-                     'comerciales - Terceros y relacionadas')
+    FORMATO_TITLE = 'Detalle del saldo de la cuenta 42 - Proveedores'
     SHEET_NAME = 'F3.12 Proveedores'
     PARTY_LABEL = 'INFORMACIÓN DEL PROVEEDOR'
     AMOUNT_LABEL = 'MONTO DE LA CUENTA POR PAGAR'

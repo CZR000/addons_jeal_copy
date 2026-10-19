@@ -24,20 +24,19 @@ _logger = logging.getLogger(__name__)
 FORMATOS = [
     ('01', '3.1',  'Balance General'),
     ('02', '3.2',  'Efectivo y Equivalente al Efectivo (Cuenta 10)'),
-    ('03', '3.3',  'Cuentas por Cobrar Comerciales - Terceros y Relacionadas (Cuentas 12 y 13)'),
+    ('03', '3.3',  'Clientes (Cuenta 12)'),
     ('04', '3.4',  'Cuentas por Cobrar a Accionistas (Socios) y Personal (Cuenta 14)'),
-    ('05', '3.5',  'Cuentas por Cobrar Diversas - Terceros y Relacionadas (Cuentas 16 y 17)'),
+    ('05', '3.5',  'Cuentas por Cobrar Diversas (Cuenta 16)'),
     ('06', '3.6',  'Estimacion de Cuentas de Cobranza Dudosa (Cuenta 19)'),
     ('07', '3.7',  'Mercaderias y Productos Terminados (Cuentas 20 y 21)'),
-    ('08', '3.8',  'Inversiones Mobiliarias (Cuenta 30)'),
+    ('08', '3.8',  'Valores (Cuenta 31)'),
     ('09', '3.9',  'Intangibles (Cuenta 34)'),
     ('10', '3.10', 'Tributos por Pagar (Cuenta 40)'),
     ('11', '3.11', 'Remuneraciones y Participaciones por Pagar (Cuenta 41)'),
-    ('12', '3.12', 'Cuentas por Pagar Comerciales - Terceros y Relacionadas (Cuentas 42 y 43)'),
+    ('12', '3.12', 'Proveedores (Cuenta 42)'),
     ('13', '3.13', 'Cuentas por Pagar Diversas - Terceros y Relacionadas (Cuentas 46 y 47)'),
-    ('14', '3.14', 'Beneficios Sociales de los Trabajadores (Cuenta 415)'),
-    ('15', '3.15', 'Activo Diferido y Pasivo Diferido (Cuentas 37 y 49)'),
-    ('16', '3.16', 'Capital (Cuenta 50)'),
+    ('14', '3.14', 'Beneficios Sociales de los Trabajadores (Cuenta 47)'),
+    ('15', '3.15', 'Ganancias Diferidas (Cuenta 49)'),
     ('17', '3.17', 'Balance de Comprobacion (Anexo 1)'),
     ('18', '3.18', 'Estado de Flujos de Efectivo'),
     ('19', '3.19', 'Estado de Cambios en el Patrimonio Neto'),
@@ -196,10 +195,6 @@ class PleReportInvBal(models.Model):
     xls_binary_15 = fields.Binary(string='Excel 3.15', readonly=True)
     pdf_filename_15 = fields.Char()
     pdf_binary_15 = fields.Binary(string='PDF 3.15', readonly=True)
-    xls_filename_16 = fields.Char()
-    xls_binary_16 = fields.Binary(string='Excel 3.16', readonly=True)
-    pdf_filename_16 = fields.Char()
-    pdf_binary_16 = fields.Binary(string='PDF 3.16', readonly=True)
     xls_filename_17 = fields.Char()
     xls_binary_17 = fields.Binary(string='Excel 3.17', readonly=True)
     pdf_filename_17 = fields.Char()
@@ -217,7 +212,7 @@ class PleReportInvBal(models.Model):
     pdf_filename_20 = fields.Char()
     pdf_binary_20 = fields.Binary(string='PDF 3.20', readonly=True)
 
-    # -- Libro completo (los 20 formatos en un solo Excel y un solo PDF) --
+    # -- Libro completo (los 19 formatos en un solo Excel y un solo PDF) --
     xls_filename_all = fields.Char()
     xls_binary_all = fields.Binary(string='Excel Libro Completo', readonly=True)
     pdf_filename_all = fields.Char()
@@ -315,7 +310,7 @@ class PleReportInvBal(models.Model):
         self._mark_generated()
 
     def _build_consolidated_xlsx(self):
-        """Arma el XLSX con los 20 formatos. Si alguno falla, se detiene e
+        """Arma el XLSX con los 19 formatos. Si alguno falla, se detiene e
         indica cual. Retorna (bytes, nombre de archivo)."""
         self.ensure_one()
         output = BytesIO()

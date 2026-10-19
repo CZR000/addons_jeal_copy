@@ -38,12 +38,12 @@ class PleReportInvBalBook0305To0307(models.Model):
     # Acciones
     # ------------------------------------------------------------------
     def action_generate_05(self):
-        """Formato 3.5 - Cuentas por cobrar diversas (cuentas 16 y 17)."""
+        """Formato 3.5 - Cuentas por cobrar diversas (cuenta 16)."""
         return self._generate_single('05')
 
     def _prepare_report_05(self):
         self.ensure_one()
-        data = self._get_open_items(['16', '17'], date_source='invoice')
+        data = self._get_open_items(['16'], date_source='invoice')
         report = InvBal35ReportExcel(self, data)
         return report
 

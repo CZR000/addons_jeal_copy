@@ -77,11 +77,10 @@ class InvBalPartnerReportBase(InvBalReportBase):
 
 
 class InvBal33ReportExcel(InvBalPartnerReportBase):
-    """Formato 3.3 - Cuentas por cobrar comerciales (cuentas 12 y 13)."""
+    """Formato 3.3 - Clientes (cuenta 12)."""
 
     FORMATO_CODE = '3.3'
-    FORMATO_TITLE = ('Detalle del saldo de la cuenta 12 y 13 - Cuentas por cobrar '
-                     'comerciales - Terceros y relacionadas')
+    FORMATO_TITLE = 'Detalle del saldo de la cuenta 12 - Clientes'
     SHEET_NAME = 'F3.3 Clientes'
     PARTY_LABEL = 'INFORMACIÓN DEL CLIENTE'
     AMOUNT_LABEL = 'MONTO DE LA CUENTA POR COBRAR'

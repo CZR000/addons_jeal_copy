@@ -94,7 +94,7 @@
                             <label string="Reporte PDF" for="pdf_binary_02"/>
                             <field name="pdf_binary_02" filename="pdf_filename_02" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.3 - Cuentas por Cobrar Comerciales - Terceros y Relacionadas (Cuentas 12 y 13)" name="sec_03">
+                        <group string="Reporte 3.3 - Clientes (Cuenta 12)" name="sec_03">
                             <button name="action_generate_03" string="Generar Reporte 3.3"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -116,7 +116,7 @@
                             <label string="Reporte PDF" for="pdf_binary_04"/>
                             <field name="pdf_binary_04" filename="pdf_filename_04" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.5 - Cuentas por Cobrar Diversas - Terceros y Relacionadas (Cuentas 16 y 17)" name="sec_05">
+                        <group string="Reporte 3.5 - Cuentas por Cobrar Diversas (Cuenta 16)" name="sec_05">
                             <button name="action_generate_05" string="Generar Reporte 3.5"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -149,7 +149,7 @@
                             <label string="Reporte PDF" for="pdf_binary_07"/>
                             <field name="pdf_binary_07" filename="pdf_filename_07" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.8 - Inversiones Mobiliarias (Cuenta 30)" name="sec_08">
+                        <group string="Reporte 3.8 - Valores (Cuenta 31)" name="sec_08">
                             <button name="action_generate_08" string="Generar Reporte 3.8"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -193,7 +193,7 @@
                             <label string="Reporte PDF" for="pdf_binary_11"/>
                             <field name="pdf_binary_11" filename="pdf_filename_11" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.12 - Cuentas por Pagar Comerciales - Terceros y Relacionadas (Cuentas 42 y 43)" name="sec_12">
+                        <group string="Reporte 3.12 - Proveedores (Cuenta 42)" name="sec_12">
                             <button name="action_generate_12" string="Generar Reporte 3.12"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -215,7 +215,7 @@
                             <label string="Reporte PDF" for="pdf_binary_13"/>
                             <field name="pdf_binary_13" filename="pdf_filename_13" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.14 - Beneficios Sociales de los Trabajadores (Cuenta 415)" name="sec_14">
+                        <group string="Reporte 3.14 - Beneficios Sociales de los Trabajadores (Cuenta 47)" name="sec_14">
                             <button name="action_generate_14" string="Generar Reporte 3.14"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -226,7 +226,7 @@
                             <label string="Reporte PDF" for="pdf_binary_14"/>
                             <field name="pdf_binary_14" filename="pdf_filename_14" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.15 - Activo Diferido y Pasivo Diferido (Cuentas 37 y 49)" name="sec_15">
+                        <group string="Reporte 3.15 - Ganancias Diferidas (Cuenta 49)" name="sec_15">
                             <button name="action_generate_15" string="Generar Reporte 3.15"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
@@ -236,17 +236,6 @@
                             <field name="pdf_filename_15" invisible="1"/>
                             <label string="Reporte PDF" for="pdf_binary_15"/>
                             <field name="pdf_binary_15" filename="pdf_filename_15" readonly="1" nolabel="1"/>
-                        </group>
-                        <group string="Reporte 3.16 - Capital (Cuenta 50)" name="sec_16">
-                            <button name="action_generate_16" string="Generar Reporte 3.16"
-                                    type="object" class="btn-primary oe_highlight"
-                                    colspan="2"/>
-                            <field name="xls_filename_16" invisible="1"/>
-                            <label string="Reporte Excel" for="xls_binary_16"/>
-                            <field name="xls_binary_16" filename="xls_filename_16" readonly="1" nolabel="1"/>
-                            <field name="pdf_filename_16" invisible="1"/>
-                            <label string="Reporte PDF" for="pdf_binary_16"/>
-                            <field name="pdf_binary_16" filename="pdf_filename_16" readonly="1" nolabel="1"/>
                         </group>
                         <group string="Reporte 3.17 - Balance de Comprobacion (Anexo 1)" name="sec_17">
                             <button name="action_generate_17" string="Generar Reporte 3.17"

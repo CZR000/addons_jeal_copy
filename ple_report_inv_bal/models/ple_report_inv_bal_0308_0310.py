@@ -20,7 +20,7 @@ class PleReportInvBalBook0308To0310(models.Model):
     # Acciones
     # ------------------------------------------------------------------
     def action_generate_08(self):
-        """Formato 3.8 - Inversiones mobiliarias (cuenta 30)."""
+        """Formato 3.8 - Valores (cuenta 31)."""
         return self._generate_single('08')
 
     def _prepare_report_08(self):
@@ -89,19 +89,19 @@ class PleReportInvBalBook0308To0310(models.Model):
         }
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.8 (cuenta 30 - Inversiones mobiliarias, PCGE 2019)
+    # DATA - Formato 3.8 (cuenta 31 - Valores)
     # ------------------------------------------------------------------
     def _get_data_38(self):
-        """Inversiones mobiliarias al `date_end` por emisor y cuenta.
+        """Valores al `date_end` por emisor y cuenta.
 
-        - Costo total: saldo de las cuentas 30.
+        - Costo total: saldo de las cuentas 31.
         - Provision total: saldo de la desvalorizacion (367), en una fila
           propia por cuenta/emisor, en positivo.
         - Valor nominal unitario y cantidad de titulos no se registran en
           Odoo, por lo que se dejan en blanco.
         """
         self.ensure_one()
-        cost_accounts = self._get_accounts_by_prefix(['30'])
+        cost_accounts = self._get_accounts_by_prefix(['31'])
         prov_accounts = self._get_accounts_by_prefix(['367'])
         all_accounts = cost_accounts | prov_accounts
         balances = self._balances_by_account_partner(self.date_end, all_accounts.ids)

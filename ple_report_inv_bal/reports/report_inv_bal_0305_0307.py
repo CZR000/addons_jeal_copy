@@ -3,11 +3,10 @@ from .report_inv_bal_partner import InvBalPartnerReportBase
 
 
 class InvBal35ReportExcel(InvBalPartnerReportBase):
-    """Formato 3.5 - Cuentas por cobrar diversas (cuentas 16 y 17)."""
+    """Formato 3.5 - Cuentas por cobrar diversas (cuenta 16)."""
 
     FORMATO_CODE = '3.5'
-    FORMATO_TITLE = ('Detalle del saldo de la cuenta 16 y 17 - Cuentas por cobrar '
-                     'diversas - Terceros y relacionadas')
+    FORMATO_TITLE = 'Detalle del saldo de la cuenta 16 - Cuentas por cobrar diversas'
     SHEET_NAME = 'F3.5 CxC Diversas'
     PARTY_LABEL = 'INFORMACIÓN DE TERCEROS'
     AMOUNT_LABEL = 'MONTO DE LA CUENTA POR COBRAR'

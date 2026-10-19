@@ -2,7 +2,7 @@ from .report_inv_bal_base import InvBalReportBase
 
 
 class InvBal38ReportExcel(InvBalReportBase):
-    """Formato 3.8 - Inversiones mobiliarias (cuenta 30, PCGE 2019).
+    """Formato 3.8 - Valores (cuenta 31).
 
     Columnas: Documento de identidad del emisor (tipo Tabla 2, numero),
     razon social del emisor | Titulo (denominacion, valor nominal unitario,
@@ -14,8 +14,8 @@ class InvBal38ReportExcel(InvBalReportBase):
     """
 
     FORMATO_CODE = '3.8'
-    FORMATO_TITLE = 'Detalle del saldo de la cuenta 30 - Inversiones mobiliarias'
-    SHEET_NAME = 'F3.8 Inv. Mobiliarias'
+    FORMATO_TITLE = 'Detalle del saldo de la cuenta 31 - Valores'
+    SHEET_NAME = 'F3.8 Valores'
     LANDSCAPE = True
 
     COL_DOC_TYPE = 0

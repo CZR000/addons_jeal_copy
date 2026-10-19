@@ -34,12 +34,12 @@ class PleReportInvBalBook0311To0313(models.Model):
         return report
 
     def action_generate_12(self):
-        """Formato 3.12 - Cuentas por pagar comerciales (42 y 43)."""
+        """Formato 3.12 - Proveedores (cuenta 42)."""
         return self._generate_single('12')
 
     def _prepare_report_12(self):
         self.ensure_one()
-        data = self._get_open_items(['42', '43'], date_source='invoice')
+        data = self._get_open_items(['42'], date_source='invoice')
         report = InvBal312ReportExcel(self, data)
         return report
 
