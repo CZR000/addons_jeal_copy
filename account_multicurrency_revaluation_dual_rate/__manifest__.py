@@ -1,6 +1,6 @@
 {
     'name': 'Account Multicurrency Revaluation Dual Rate',
-    'version': '18.0.1.3.4',
+    'version': '18.0.1.4.0',
     'author': 'AlexJimmy159',
     'maintainer': 'AlexJimmy159',
     'support': 'AlexJimmy159@gmail.com',

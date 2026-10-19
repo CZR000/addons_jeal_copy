@@ -27,7 +27,7 @@
                             General Ledger
                         </DropdownItem>
 
-                        <DropdownItem onSelected="(ev) => controller.reportAction(ev, 'action_multi_currency_revaluation_dual_rate_open_currency_rates', { line_id: props.line.id })">
+                        <DropdownItem onSelected="(ev) => controller.reportAction(ev, 'action_multi_currency_revaluation_dual_rate_toggle_provision', { line_id: props.line.id })">
                             <t t-esc="props.line.is_included_line ? 'Exclude' : 'Include'"/>
                         </DropdownItem>
                     </t>

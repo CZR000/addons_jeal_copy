@@ -369,3 +369,23 @@ msgstr "Debe activar más de una divisa para acceder a este reporte."
 #, python-format
 msgid "⇒ Reset to Odoo’s Rate"
 msgstr "⇒ Restablecer a la tasa de Odoo"
+
+#. module: account_multicurrency_revaluation_dual_rate
+#: code:addons/account_multicurrency_revaluation_dual_rate/wizards/account_multicurrency_revaluation_dual_rate_wizard.py:0
+msgid "Foreign currencies adjustment entry for %(move_name)s as of %(date)s"
+msgstr "Asiento de ajuste de divisas extranjeras de %(move_name)s al %(date)s"
+
+#. module: account_multicurrency_revaluation_dual_rate
+#: code:addons/account_multicurrency_revaluation_dual_rate/wizards/account_multicurrency_revaluation_dual_rate_wizard.py:0
+msgid "Foreign currencies adjustment entry for non-reconcilable accounts as of %s"
+msgstr "Asiento de ajuste de divisas extranjeras de cuentas no conciliables al %s"
+
+#. module: account_multicurrency_revaluation_dual_rate
+#: model:ir.model.fields,field_description:account_multicurrency_revaluation_dual_rate.field_account_move__revaluation_reversal_date
+msgid "Revaluation Reversal Date"
+msgstr "Fecha de reversión del ajuste"
+
+#. module: account_multicurrency_revaluation_dual_rate
+#: model:ir.model.fields,field_description:account_multicurrency_revaluation_dual_rate.field_account_move__revaluation_fiscal_closure
+msgid "Revaluation Fiscal Closure"
+msgstr "Ajuste de cierre fiscal"

@@ -104,9 +104,13 @@ class MulticurrencyRevaluationDualRateReport(models.AbstractModel):
         for index, line in enumerate(lines):
             res_model_name, res_id = report._get_model_info_from_id(line['id'])
 
+            is_last_line = index == len(lines) - 1
             if res_model_name == 'account.report.line' and (
-                   (res_id == line_to_adjust_id and report._get_model_info_from_id(lines[index + 1]['id']) == ('account.report.line', line_excluded_id)) or
-                   (res_id == line_excluded_id and index == len(lines) - 1)
+                   (res_id == line_to_adjust_id and (
+                       is_last_line
+                       or report._get_model_info_from_id(lines[index + 1]['id']) == ('account.report.line', line_excluded_id)
+                   )) or
+                   (res_id == line_excluded_id and is_last_line)
             ):
                 # 'To Adjust' and 'Excluded' lines need to be hidden if they have no child
                 continue
@@ -126,7 +130,8 @@ class MulticurrencyRevaluationDualRateReport(models.AbstractModel):
 
             elif res_model_name == 'account.account':
                 # Mark the included/excluded lines, so that the custom component templates knows what label to put on them
-                line['is_included_line'] = report._get_res_id_from_line_id(line['id'], 'account.account') == line_to_adjust_id
+                # The parent report line (to adjust / excluded) is part of the generic line id
+                line['is_included_line'] = report._get_res_id_from_line_id(line['id'], 'account.report.line') == line_to_adjust_id
 
             # Inject the related model into the line dict in order to use it on the custom component template on js side to display buttons
             line['cur_revaluation_line_model'] = res_model_name

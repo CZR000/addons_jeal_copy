@@ -82,8 +82,8 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
         default=True,
         help='When enabled (with One Entry Per Document), creates all adjustment entries '
              'in draft state without posting them. You can then review and post them in '
-             'batches manually from the journal entries list. Reversal entries will be '
-             'generated automatically upon posting each batch. '
+             'batches manually from the journal entries list. The reversal of each entry '
+             'is created and posted automatically when the entry is posted. '
              'Recommended for large volumes to avoid request timeouts.',
     )
 
@@ -111,6 +111,11 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
         Reemplaza la validación pesada que corría el reporte completo. Usa un
         SELECT ... LIMIT 1 que Postgres puede responder en milisegundos con los
         índices apropiados.
+
+        Usa los mismos criterios de cuenta que el reporte. Una cuenta no
+        conciliable (p. ej. bancos en ME) siempre es candidata; una conciliable
+        lo es si tiene saldo pendiente hoy o si fue conciliada después de la
+        fecha de corte (ajuste retroactivo).
         """
         options = self._context.get('multicurrency_revaluation_report_options', {})
         date_to = fields.Date.to_date(options['date']['date_to'])
@@ -122,21 +127,42 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
             SELECT 1
               FROM account_move_line aml
               JOIN account_account acc ON acc.id = aml.account_id
-             WHERE aml.company_id = %s
+             WHERE aml.company_id = %(company_id)s
                AND aml.parent_state = 'posted'
-               AND aml.date <= %s
-               AND aml.currency_id = ANY(%s)
-               AND aml.currency_id != aml.company_currency_id
-               AND acc.account_type NOT IN %s
-               AND acc.reconcile = TRUE
-               AND aml.amount_residual_currency != 0
+               AND aml.date <= %(date_to)s
+               AND aml.currency_id = ANY(%(currency_ids)s)
+               AND acc.account_type NOT IN %(excluded_types)s
+               AND (
+                    acc.currency_id != aml.company_currency_id
+                    OR (
+                        acc.account_type IN ('asset_receivable', 'liability_payable')
+                        AND aml.currency_id != aml.company_currency_id
+                    )
+               )
+               AND (
+                    acc.reconcile IS NOT TRUE
+                    OR aml.amount_residual_currency != 0
+                    OR aml.amount_residual != 0
+                    OR EXISTS (
+                        SELECT 1
+                          FROM account_partial_reconcile p
+                         WHERE p.debit_move_id = aml.id
+                           AND p.max_date > %(date_to)s
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                          FROM account_partial_reconcile p
+                         WHERE p.credit_move_id = aml.id
+                           AND p.max_date > %(date_to)s
+                    )
+               )
              LIMIT 1
-        """, (
-            self.env.company.id,
-            date_to,
-            currency_ids,
-            self._EXCLUDED_ACCOUNT_TYPES,
-        ))
+        """, {
+            'company_id': self.env.company.id,
+            'date_to': date_to,
+            'currency_ids': currency_ids,
+            'excluded_types': self._EXCLUDED_ACCOUNT_TYPES,
+        })
         return bool(self.env.cr.fetchone())
 
     # -------------------------------------------------------------------------
@@ -147,6 +173,7 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
     def _compute_show_warning(self):
         for record in self:
             last_move = self.env['account.move.line'].search([
+                ('company_id', '=', record.company_id.id),
                 ('account_id', 'in', (record.expense_provision_account_id + record.income_provision_account_id).ids),
                 ('date', '<', record.reversal_date),
             ], order='date desc', limit=1).move_id
@@ -325,11 +352,17 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
     # -------------------------------------------------------------------------
 
     def _get_move_vals_per_source_move(self):
-        """Return ``{source_move_id: move_vals}`` usando amount_residual directo.
+        """Return ``{source_move_id: move_vals}`` with the same figures as the report.
 
-        Mucho más rápido que llamar al custom engine del reporte, ya que evita
-        el query con LATERAL sobre account_partial_reconcile. Válido cuando la
-        fecha del ajuste es actual (no retroactiva con reconciliaciones posteriores).
+        - The residual is computed **as of the adjustment date** (partials with
+          ``max_date <= date_to``), so a retroactive adjustment matches the report.
+        - Accounts are selected with the same criteria as the report (foreign
+          currency accounts, plus receivable/payable lines in foreign currency).
+        - Reconcilable accounts (receivables, payables, advances...) produce one
+          entry per source document.
+        - Non-reconcilable accounts (e.g. foreign currency banks) have no
+          "document" to follow; their lines are grouped by account and currency
+          into a single entry, stored under the key ``False``.
         """
         t0 = time.time()
 
@@ -341,42 +374,95 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
 
         # IDs de moneda con tasa configurada
         currency_ids = [int(cid) for cid in currency_rates.keys()]
+        if not currency_ids:
+            return {}
 
-        # Buscar AML candidatas: en moneda extranjera con saldo pendiente
-        # Usamos SQL crudo con solo los campos necesarios — mucho más rápido
-        # que search + browse cuando hablamos de miles de AML.
         self.env.cr.execute("""
-            SELECT aml.id,
-                   aml.move_id,
-                   aml.account_id,
-                   aml.currency_id,
-                   aml.amount_residual,
-                   aml.amount_residual_currency,
-                   acc.account_type
-              FROM account_move_line aml
-              JOIN account_account acc ON acc.id = aml.account_id
-             WHERE aml.company_id = %s
-               AND aml.parent_state = 'posted'
-               AND aml.date <= %s
-               AND aml.currency_id = ANY(%s)
-               AND aml.currency_id != aml.company_currency_id
-               AND acc.account_type NOT IN %s
-               AND acc.reconcile = TRUE
-               AND aml.amount_residual_currency != 0
-               AND NOT EXISTS (
-                    SELECT 1
-                      FROM account_account_exclude_res_currency_provision ex
-                     WHERE ex.account_account_id = aml.account_id
-                       AND ex.res_currency_id = aml.currency_id
-               )
-               AND NOT EXISTS (
-                    SELECT 1
-                      FROM account_partial_reconcile pex
-                     WHERE pex.exchange_move_id = aml.move_id
-               )
-        """, (
-            company.id, date_to, currency_ids, self._EXCLUDED_ACCOUNT_TYPES,
-        ))
+            WITH eligible AS (
+                SELECT aml.id,
+                       aml.move_id,
+                       aml.account_id,
+                       aml.currency_id,
+                       aml.balance,
+                       aml.amount_currency,
+                       acc.account_type,
+                       COALESCE(acc.reconcile, FALSE) AS reconcile
+                  FROM account_move_line aml
+                  JOIN account_account acc ON acc.id = aml.account_id
+                 WHERE aml.company_id = %(company_id)s
+                   AND aml.parent_state = 'posted'
+                   AND aml.date <= %(date_to)s
+                   AND aml.currency_id = ANY(%(currency_ids)s)
+                   AND acc.account_type NOT IN %(excluded_types)s
+                   AND (
+                        acc.currency_id != aml.company_currency_id
+                        OR (
+                            acc.account_type IN ('asset_receivable', 'liability_payable')
+                            AND aml.currency_id != aml.company_currency_id
+                        )
+                   )
+                   AND NOT EXISTS (
+                        SELECT 1
+                          FROM account_account_exclude_res_currency_provision ex
+                         WHERE ex.account_account_id = aml.account_id
+                           AND ex.res_currency_id = aml.currency_id
+                   )
+                   AND NOT EXISTS (
+                        SELECT 1
+                          FROM account_partial_reconcile pex
+                         WHERE pex.exchange_move_id = aml.move_id
+                           AND pex.max_date <= %(date_to)s
+                   )
+                   -- Prefilter (performance): skip reconcilable lines that are fully
+                   -- reconciled today and had no reconciliation after date_to, since
+                   -- their residual at date_to is necessarily zero.
+                   AND (
+                        acc.reconcile IS NOT TRUE
+                        OR aml.amount_residual_currency != 0
+                        OR aml.amount_residual != 0
+                        OR EXISTS (
+                            SELECT 1
+                              FROM account_partial_reconcile pf
+                             WHERE pf.debit_move_id = aml.id
+                               AND pf.max_date > %(date_to)s
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                              FROM account_partial_reconcile pf
+                             WHERE pf.credit_move_id = aml.id
+                               AND pf.max_date > %(date_to)s
+                        )
+                   )
+            )
+            SELECT e.id,
+                   e.move_id,
+                   e.account_id,
+                   e.currency_id,
+                   e.account_type,
+                   e.reconcile,
+                   e.balance - COALESCE(d.amount, 0.0) + COALESCE(c.amount, 0.0) AS residual,
+                   e.amount_currency - COALESCE(d.amount_currency, 0.0) + COALESCE(c.amount_currency, 0.0) AS residual_currency
+              FROM eligible e
+              LEFT JOIN LATERAL (
+                    SELECT SUM(p.amount) AS amount,
+                           SUM(p.debit_amount_currency) AS amount_currency
+                      FROM account_partial_reconcile p
+                     WHERE p.debit_move_id = e.id
+                       AND p.max_date <= %(date_to)s
+              ) d ON TRUE
+              LEFT JOIN LATERAL (
+                    SELECT SUM(p.amount) AS amount,
+                           SUM(p.credit_amount_currency) AS amount_currency
+                      FROM account_partial_reconcile p
+                     WHERE p.credit_move_id = e.id
+                       AND p.max_date <= %(date_to)s
+              ) c ON TRUE
+        """, {
+            'company_id': company.id,
+            'date_to': date_to,
+            'currency_ids': currency_ids,
+            'excluded_types': self._EXCLUDED_ACCOUNT_TYPES,
+        })
 
         rows = self.env.cr.dictfetchall()
         _logger.info(
@@ -387,26 +473,36 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
         if not rows:
             return {}
 
-        # Agrupar por move fuente y calcular ajuste
+        currencies = {cur.id: cur for cur in self.env['res.currency'].browse(currency_ids)}
+
+        # Reconcilable lines: grouped by source move.
+        # Non-reconcilable lines (banks...): grouped by (account, currency) in one entry.
         move_groups = defaultdict(list)
+        grouped_balances = defaultdict(float)
+        grouped_types = {}
 
         for row in rows:
             currency_data = currency_rates.get(str(row['currency_id']))
             if not currency_data:
                 continue
 
-            # Elegir tasa según tipo de cuenta
-            if row['account_type'] in self._ASSET_ACCOUNT_TYPES:
-                rate = currency_data['purchase_rate']
-            else:  # liability / otros
-                rate = currency_data['sale_rate']
+            residual = company_currency.round(row['residual'] or 0.0)
+            residual_currency = currencies[row['currency_id']].round(row['residual_currency'] or 0.0)
+            if company_currency.is_zero(residual) and currencies[row['currency_id']].is_zero(residual_currency):
+                continue
 
+            rate, dummy = self._get_rate_info_for_account(row['account_type'], currency_data)
             if not rate:
                 continue
 
             # adjustment = (residual_currency / rate) - residual_company
-            new_balance = row['amount_residual_currency'] / rate
-            adjustment = new_balance - row['amount_residual']
+            adjustment = residual_currency / rate - residual
+
+            if not row['reconcile']:
+                key = (row['account_id'], row['currency_id'])
+                grouped_balances[key] += adjustment
+                grouped_types[key] = row['account_type']
+                continue
 
             if company_currency.is_zero(adjustment):
                 continue
@@ -418,15 +514,12 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
                 'currency_id': row['currency_id'],
             })
 
-        if not move_groups:
-            return {}
+        result = {}
 
         # Cargar nombres de moves fuente (prefetch automático)
-        source_moves = self.env['account.move'].browse(move_groups.keys())
+        source_moves = self.env['account.move'].browse(list(move_groups.keys()))
         move_name_map = {m.id: m.name for m in source_moves}
 
-        # Armar move_vals
-        result = {}
         for source_move_id, items in move_groups.items():
             move_lines = []
             for item in items:
@@ -436,7 +529,7 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
                 )
                 move_lines.extend(
                     self._build_provision_lines(
-                        item['balance'], item['account_id'], item['currency_id'],
+                        company_currency.round(item['balance']), item['account_id'], item['currency_id'],
                         selected_rate, rate_type,
                     )
                 )
@@ -453,8 +546,30 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
                     'line_ids': move_lines,
                 }
 
+        grouped_lines = []
+        for (account_id, currency_id), balance in grouped_balances.items():
+            balance = company_currency.round(balance)
+            if company_currency.is_zero(balance):
+                continue
+            selected_rate, rate_type = self._get_rate_info_for_account(
+                grouped_types[(account_id, currency_id)], currency_rates[str(currency_id)],
+            )
+            grouped_lines.extend(
+                self._build_provision_lines(balance, account_id, currency_id, selected_rate, rate_type)
+            )
+        if grouped_lines:
+            result[False] = {
+                'ref': _(
+                    "Foreign currencies adjustment entry for non-reconcilable accounts as of %s",
+                    format_date(self.env, self.date),
+                ),
+                'journal_id': self.journal_id.id,
+                'date': self.date,
+                'line_ids': grouped_lines,
+            }
+
         _logger.info(
-            "Revaluation per-move: prepared %d source-move adjustments in %.2fs",
+            "Revaluation per-move: prepared %d adjustments in %.2fs",
             len(result), time.time() - t0,
         )
         return result
@@ -515,7 +630,9 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
 
         Two modes:
         - create_as_draft=True (default): only create in draft state, user posts later
-          in batches from the journal entries list. Fast, no timeout risk.
+          in batches from the journal entries list. Each entry keeps its reversal date,
+          and its reversal is created and posted automatically when it is posted
+          (see ``account.move._post``). Fast, no timeout risk.
         - create_as_draft=False: legacy behavior (create + post + reverse + post reversal
           in a single request). Only viable for small volumes (< 500 moves).
         """
@@ -527,15 +644,13 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
 
         # Prepare batch create vals
         vals_list = []
-        source_move_ids_order = []
         for source_move_id, move_vals in moves_vals.items():
             if not move_vals['line_ids']:
                 continue
             vals_list.append({
                 **move_vals,
-                'revaluation_source_move_id': source_move_id,
+                'revaluation_source_move_id': source_move_id or False,
             })
-            source_move_ids_order.append(source_move_id)
 
         if not vals_list:
             raise UserError(_("No provision needed was found."))
@@ -543,6 +658,11 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
         # --- Modo draft: solo crear, no postear ---
         if self.create_as_draft:
             t0 = time.time()
+            # The reversal data travels with each draft entry, so that posting it
+            # later (one by one or in batch) creates and posts its reversal.
+            for vals in vals_list:
+                vals['revaluation_reversal_date'] = self.reversal_date
+                vals['revaluation_fiscal_closure'] = self.fiscal_closure
             adjustment_moves = self.env['account.move'].create(vals_list)
             _logger.info(
                 "Revaluation per-move (DRAFT): created %d adjustment moves in %.2fs",
@@ -633,9 +753,8 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
     def _open_draft_adjustments_action(self, move_ids):
         """Return action to display the DRAFT adjustment entries ready for posting.
 
-        The reversal_date and fiscal_closure are passed via context so the
-        batch-post action (defined on account.move) can retrieve them when
-        the user posts a selection.
+        The reversal date and fiscal closure flag are stored on each draft
+        entry, so posting a selection from this list reverses them automatically.
         """
         list_view = self.env.ref('account.view_move_tree', False)
         form_view = self.env.ref('account.view_move_form', False)
@@ -651,8 +770,6 @@ class MulticurrencyRevaluationDualRateWizard(models.TransientModel):
             ],
             'context': {
                 **self.env.context,
-                'default_reversal_date': self.reversal_date.isoformat() if self.reversal_date else False,
-                'default_fiscal_closure': self.fiscal_closure,
                 'search_default_state': 'draft',
             },
         }
