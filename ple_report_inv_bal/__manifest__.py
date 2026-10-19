@@ -1,6 +1,6 @@
 {
     'name': 'PLE Libro de Inventarios y Balances',
-    'version': '18.0.3.3.0',
+    'version': '18.0.3.3.1',
     'category': 'Accounting/Localizations/Reporting',
     'summary': 'Reporte visual PLE Libro de Inventarios y Balances - Formatos 3.1 a 3.20',
     'description': """

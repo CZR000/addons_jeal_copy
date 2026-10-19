@@ -34,7 +34,7 @@ FORMATOS = [
     ('10', '3.10', 'Tributos por Pagar (Cuenta 40)'),
     ('11', '3.11', 'Remuneraciones y Participaciones por Pagar (Cuenta 41)'),
     ('12', '3.12', 'Proveedores (Cuenta 42)'),
-    ('13', '3.13', 'Cuentas por Pagar Diversas - Terceros y Relacionadas (Cuentas 46 y 47)'),
+    ('13', '3.13', 'Cuentas por Pagar Diversas (Cuenta 46)'),
     ('14', '3.14', 'Beneficios Sociales de los Trabajadores (Cuenta 47)'),
     ('15', '3.15', 'Ganancias Diferidas (Cuenta 49)'),
     ('17', '3.17', 'Balance de Comprobacion (Anexo 1)'),

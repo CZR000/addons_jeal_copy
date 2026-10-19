@@ -204,7 +204,7 @@
                             <label string="Reporte PDF" for="pdf_binary_12"/>
                             <field name="pdf_binary_12" filename="pdf_filename_12" readonly="1" nolabel="1"/>
                         </group>
-                        <group string="Reporte 3.13 - Cuentas por Pagar Diversas - Terceros y Relacionadas (Cuentas 46 y 47)" name="sec_13">
+                        <group string="Reporte 3.13 - Cuentas por Pagar Diversas (Cuenta 46)" name="sec_13">
                             <button name="action_generate_13" string="Generar Reporte 3.13"
                                     type="object" class="btn-primary oe_highlight"
                                     colspan="2"/>
