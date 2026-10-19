@@ -47,11 +47,6 @@ class SirePurchaseNotDomiciledWizard(models.TransientModel):
         required=True
     )
     correlative = fields.Char(string='Correlativo')
-    skip_nodom_validation = fields.Boolean(
-        string='Generar aunque tenga observaciones',
-        help='Si se marca, el TXT se genera aunque existan observaciones. '
-             'La lista de observaciones se muestra igual como advertencia.'
-    )
 
     @api.onchange('opportunity_code')
     def _onchange_opportunity_code(self):
@@ -230,12 +225,10 @@ class SirePurchaseNotDomiciledWizard(models.TransientModel):
                     'Completar Tipo de Renta en la factura.')
         return observations
 
-    def _get_nodom_observations_text(self, observations, blocking=True):
+    def _get_nodom_observations_text(self, observations):
         header = (
             'No se generó el TXT: hay {} observación(es) que SUNAT rechazaría. '
             'Corrija los datos en las facturas o socios (ver Excel de observaciones).'
-            if blocking else
-            'TXT generado con {} observación(es) que SUNAT podría rechazar.'
         ).format(len(observations))
         lines = [header, '']
         for obs in observations[:NODOM_MAX_LINES_DIALOG]:
@@ -276,7 +269,7 @@ class SirePurchaseNotDomiciledWizard(models.TransientModel):
                 self.company_id.name, self.year, self.month),
             'zip_binary': False,
             'zip_filename': '',
-            'error_dialog': self._get_nodom_observations_text(observations, blocking=True),
+            'error_dialog': self._get_nodom_observations_text(observations),
         })
 
     def action_generate_files(self):
@@ -289,15 +282,10 @@ class SirePurchaseNotDomiciledWizard(models.TransientModel):
         })
         processed_results = self._process_query_results()
         observations = self._get_nodom_observations(processed_results)
-        if observations and not self.skip_nodom_validation:
+        if observations:
             self._save_nodom_observations(observations)
             return self._return_view_sire_purchase()
 
         file_values = self._generate_files(processed_results)
         self._save_generate_files(file_values)
-        if observations:
-            self.error_dialog = '\n\n'.join(filter(None, [
-                self._get_nodom_observations_text(observations, blocking=False),
-                self.error_dialog,
-            ]))
         return self._return_view_sire_purchase()

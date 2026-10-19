@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 # Tipos de comprobante que SUNAT acepta en el campo 10 del RCE No Domiciliados
 # (tipo de comprobante que sustenta el credito fiscal).
@@ -25,6 +25,14 @@ class AccountMove(models.Model):
     inv_serie = fields.Char(copy=False)
     inv_year_dua_dsi = fields.Char(copy=False)
     inv_correlative = fields.Char(copy=False)
+
+    # CDI: se autocompleta (la ayuda del campo lo indicaba, pero no habia
+    # codigo que lo hiciera). No pisa un valor elegido por el usuario.
+    cdi = fields.Selection(
+        compute='_compute_cdi_nodom',
+        store=True,
+        readonly=False,
+    )
 
     # Tipo de documento del propio comprobante (campo 4 del TXT): se mantiene
     # el 91 para No Domiciliado, pero respetando el calculo estandar de Odoo
@@ -74,3 +82,91 @@ class AccountMove(models.Model):
                     code=move.inv_type_document.code,
                     name=move.inv_type_document.name,
                 ))
+
+    # -------------------------------------------------------------------------
+    # CDI (convenio para evitar la doble imposicion)
+    # -------------------------------------------------------------------------
+
+    def _get_nodom_cdi_code(self):
+        """Codigo CDI segun el contacto o, en su defecto, el pais del proveedor.
+
+        - Convenio cargado en el contacto (double_taxation), si existe.
+        - Codigo de convenio del pais (l10n_pe_agreement_code).
+        - Pais sin codigo de convenio: '00' (Ninguno).
+        - Proveedor sin pais: False (lo exige la validacion al publicar).
+        """
+        self.ensure_one()
+        valid_codes = dict(self._fields['cdi'].selection)
+        partner = self.partner_id
+        if not partner:
+            return False
+        if 'double_taxation' in partner._fields and partner.double_taxation:
+            code = str(partner.double_taxation).zfill(2)
+            if code in valid_codes:
+                return code
+        country = partner.country_id
+        if not country:
+            return False
+        agreement = (
+            country.l10n_pe_agreement_code
+            if 'l10n_pe_agreement_code' in country._fields else False
+        )
+        if agreement:
+            code = str(agreement).strip().zfill(2)
+            return code if code in valid_codes else False
+        return '00'
+
+    # Solo depende de campos de la propia factura: cambiar el pais de un
+    # contacto no recalcula facturas existentes.
+    @api.depends('is_nodomicilied', 'partner_id')
+    def _compute_cdi_nodom(self):
+        for move in self:
+            if not move.is_nodomicilied or move.cdi:
+                continue
+            code = move._get_nodom_cdi_code()
+            if code:
+                move.cdi = code
+
+    # -------------------------------------------------------------------------
+    # Campos obligatorios al publicar
+    # -------------------------------------------------------------------------
+
+    def _get_nodom_missing_fields(self):
+        self.ensure_one()
+        missing = []
+        partner = self.partner_id
+        if not self.type_rent_id:
+            missing.append(_('Tipo de Renta'))
+        if not self.cdi:
+            missing.append(_('CDI (convenio para evitar la doble imposición)'))
+        if not partner.country_id:
+            missing.append(_('País del proveedor'))
+        elif not partner.country_id.l10n_pe_sunat_code:
+            missing.append(_('Código SUNAT (Tabla 35) del país %s', partner.country_id.name))
+        if not partner.vat:
+            missing.append(_('Número de identificación del proveedor'))
+        return missing
+
+    def _check_nodom_required_fields(self):
+        errors = []
+        moves = self.filtered(
+            lambda m: m.is_nodomicilied and m.move_type in ('in_invoice', 'in_refund')
+        )
+        for move in moves:
+            missing = move._get_nodom_missing_fields()
+            if missing:
+                errors.append('%s (%s): %s' % (
+                    move.ref or move.display_name,
+                    move.partner_id.display_name or '-',
+                    ', '.join(missing),
+                ))
+        if errors:
+            raise UserError(_(
+                "No se puede publicar: faltan datos obligatorios para el "
+                "registro de compras No Domiciliados.\n\n%s",
+                '\n'.join('- ' + e for e in errors),
+            ))
+
+    def _post(self, soft=True):
+        self._check_nodom_required_fields()
+        return super()._post(soft=soft)

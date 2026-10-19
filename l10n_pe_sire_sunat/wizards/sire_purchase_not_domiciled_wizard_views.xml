@@ -13,7 +13,6 @@
                         <field name="month"/>
                         <field name="state_send"/>
                         <field name="opportunity_code"/>
-                        <field name="skip_nodom_validation"/>
                         <field name="correlative" invisible="opportunity_code in ('00', '', False)" required="opportunity_code in ('03', '06')"/>
                     </group>
                     <group>

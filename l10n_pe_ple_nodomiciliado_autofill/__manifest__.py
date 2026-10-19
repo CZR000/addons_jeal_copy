@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'PLE Purchase Book - Autorelleno No Domiciliado',
-    'version': '18.0.2.0.1',
+    'version': '18.0.2.1.0',
     'summary': 'Tipo de documento (91) en facturas No Domiciliado y control '
                'del sustento de crédito fiscal según SUNAT.',
     'description': """
@@ -28,6 +28,15 @@ Cambios 18.0.2.0.1
 ------------------
 * Los datos del sustento (tipo, serie, año DUA/DSI y correlativo) no se
   copian al duplicar una factura.
+
+Cambios 18.0.2.1.0
+------------------
+* CDI: se autocompleta desde el convenio del contacto o el código de
+  convenio del país (00 si el país no tiene convenio). No pisa un valor
+  elegido por el usuario ni recalcula facturas existentes.
+* Al publicar una factura o nota de crédito de proveedor No Domiciliado se
+  exige: Tipo de Renta, CDI, país del proveedor (con código SUNAT) e
+  identificación del proveedor.
     """,
     'author': 'Empiria',
     'website': 'https://empiria.com.pe',

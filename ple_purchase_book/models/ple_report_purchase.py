@@ -1,9 +1,18 @@
 import ast
 import base64
+import re
 
 from odoo.exceptions import ValidationError
 from odoo import fields, models
+from odoo.tools.misc import xlsxwriter
+from io import BytesIO
 from ..reports.purchase_report_excel import PurchaseReportExcel, PurchaseReportTxt
+
+# Formato 8.2: tipos de CP que sustentan el credito fiscal aceptados por SUNAT.
+NODOM_SUSTENTO_ALLOWED_CODES = ('00', '46', '50', '51', '52', '53')
+# Serie y numero: solo letras y numeros (SUNAT rechaza "/", espacios, etc.).
+NODOM_ALLOWED_CHARS = re.compile(r'^[A-Za-z0-9]*$')
+NODOM_MAX_LINES_DIALOG = 50
 
 
 class PleReportPurchase(models.Model):
@@ -244,7 +253,15 @@ class PleReportPurchase(models.Model):
                 'taken_code': obj_line.get('taken_code', ''),
                 'application_article': obj_line.get('application_article', ''),
                 'partner_nodomicilied': obj_line.get('is_nodomicilied', ''),
+                'invoice_id': obj_line.get('invoice_id'),
             }
+            # Formato 8.2: si la referencia no tiene guion, el numero completo va
+            # al campo 7 (numero) y la serie queda vacia.
+            if self._is_line_8_2(value) and not value['correlative'] and value['voucher_series']:
+                value.update({
+                    'correlative': value['voucher_series'],
+                    'voucher_series': '',
+                })
             if value.get('origin_document_code') != '50':
                 value_update = {'origin_code_aduana': ''}
                 value.update(value_update)
@@ -255,6 +272,15 @@ class PleReportPurchase(models.Model):
             list_data.append(value)
             invoices.append(obj_line['invoice_id'])
 
+        # Validacion previa del formato 8.2 (No Domiciliados). No modifica datos.
+        observations = self._get_nodom_observations_8_2(list_data)
+        if observations:
+            # El 8.2 no se genera y sus facturas no quedan asociadas al reporte,
+            # para que "Declarar a SUNAT" no las marque como declaradas.
+            nodom_ids = {value['invoice_id'] for value in list_data if self._is_line_8_2(value)}
+            invoices = [invoice_id for invoice_id in invoices if invoice_id not in nodom_ids]
+            list_data = [value for value in list_data if not self._is_line_8_2(value)]
+
         purchase_report = PurchaseReportTxt(self, list_data)
         values_content = purchase_report.get_content()
         values_content2 = purchase_report.get_content8_2()
@@ -263,7 +289,7 @@ class PleReportPurchase(models.Model):
         values_content_xls = purchase_report_xls.get_content()
         value_content_xls_8_2 = purchase_report_xls.get_content('2')
 
-        self.write({
+        values = {
             'txt_binary_8_1': base64.b64encode(values_content.encode() or '\n'.encode()),
             'txt_filename_8_1': purchase_report.get_filename(),
             'error_dialog': 'No hay contenido para presentar en el registro de ventas electrónicos de este periodo.' if not values_content else '',
@@ -277,7 +303,16 @@ class PleReportPurchase(models.Model):
             'date_ple': fields.Date.today(),
             'state': 'load',
             'move_ids': invoices
-        })
+        }
+        if observations:
+            values.update({
+                'txt_binary_8_2': False,
+                'txt_filename_8_2': False,
+                'xls_binary_8_2': base64.b64encode(self._generate_nodom_observations_xlsx(observations)),
+                'xls_filename_8_2': 'Observaciones_compras_8.2.xlsx',
+                'error_dialog_8_2': self._get_nodom_observations_text(observations),
+            })
+        self.write(values)
 
     def action_close(self):
         super(PleReportPurchase, self).action_close()
@@ -297,6 +332,7 @@ class PleReportPurchase(models.Model):
             'txt_filename_8_2': False,
             'xls_binary_8_2': False,
             'xls_filename_8_2': False,
+            'error_dialog_8_2': False,
             'move_ids': False
         })
 
@@ -309,3 +345,127 @@ class PleReportPurchase(models.Model):
             result = valor
 
         return result
+
+    # -------------------------------------------------------------------------
+    # Validacion previa del formato 8.2 (No Domiciliados)
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _is_line_8_2(value):
+        """Misma condicion que usa PurchaseReportTxt.get_content8_2."""
+        return value['voucher_sunat_code'] in ['91', '97', '98'] and value['partner_nodomicilied'] != ''
+
+    @staticmethod
+    def _nodom_text(value):
+        return str(value).strip() if value not in (None, False) else ''
+
+    def _get_nodom_observations_8_2(self, list_data):
+        """Revisa los mismos valores que se escriben en el TXT 8.2."""
+        observations = []
+        moves = self.env['account.move'].browse(
+            [value['invoice_id'] for value in list_data if self._is_line_8_2(value)]
+        )
+        move_by_id = {move.id: move for move in moves}
+        for value in list_data:
+            if not self._is_line_8_2(value):
+                continue
+            get = lambda key: self._nodom_text(value.get(key))
+            move = move_by_id.get(value['invoice_id'])
+            base = {
+                'invoice_name': move.name if move else get('number_origin'),
+                'ref': (move.ref or '') if move else '',
+                'partner_name': get('customer_name'),
+                'invoice_date': get('date_invoice'),
+            }
+
+            def add(field_number, field_label, current, message):
+                observations.append(dict(
+                    base,
+                    field_number=field_number,
+                    field_label=field_label,
+                    value=current,
+                    message=message,
+                ))
+
+            # Campos 6 y 7: serie y numero del comprobante (desde la referencia)
+            voucher_series = get('voucher_series')
+            correlative = get('correlative')
+            if not correlative:
+                add(7, 'Número del comprobante', '', 'La referencia de la factura está vacía.')
+            elif not NODOM_ALLOWED_CHARS.match(correlative):
+                add(7, 'Número del comprobante', correlative,
+                    'Contiene caracteres no permitidos (solo letras y números). Corregir la referencia.')
+            if voucher_series and not NODOM_ALLOWED_CHARS.match(voucher_series):
+                add(6, 'Serie del comprobante', voucher_series,
+                    'Contiene caracteres no permitidos (solo letras y números). Corregir la referencia.')
+
+            # Campos 11 a 14: sustento del credito fiscal
+            sustento_code = get('l10n_latam_document_type')
+            if sustento_code == '0':
+                sustento_code = ''
+            inv_serie = get('inv_serie')
+            inv_correlative = get('inv_correlative')
+            if sustento_code and sustento_code not in NODOM_SUSTENTO_ALLOWED_CODES:
+                add(11, 'Tipo CP que sustenta el crédito fiscal', sustento_code,
+                    'Código no permitido. Valores aceptados: {}.'.format(', '.join(NODOM_SUSTENTO_ALLOWED_CODES)))
+            if not sustento_code and (inv_serie or inv_correlative):
+                add(11, 'Tipo CP que sustenta el crédito fiscal', '',
+                    'Hay serie o número de sustento sin tipo de documento.')
+            if inv_serie and not NODOM_ALLOWED_CHARS.match(inv_serie):
+                add(12, 'Serie del sustento', inv_serie,
+                    'Contiene caracteres no permitidos (solo letras y números).')
+            if inv_correlative and not NODOM_ALLOWED_CHARS.match(inv_correlative):
+                add(14, 'Número del sustento', inv_correlative,
+                    'Contiene caracteres no permitidos (solo letras y números).')
+
+            # Campos obligatorios
+            if not get('country_code'):
+                add(18, 'País de residencia', '',
+                    'El proveedor no tiene país o el país no tiene código SUNAT.')
+            if not get('customer_document_number'):
+                add(21, 'Identificación del sujeto no domiciliado', '',
+                    'El proveedor no tiene número de identificación.')
+            if not get('cdi'):
+                add(31, 'Convenio para evitar la doble imposición', '',
+                    'Completar CDI en la pestaña No Domiciliado (00 si no hay convenio).')
+            if not get('type_rent_code'):
+                add(33, 'Tipo de renta', '',
+                    'Completar Tipo de Renta en la factura.')
+        return observations
+
+    def _get_nodom_observations_text(self, observations):
+        lines = [
+            'No se generó el TXT 8.2: hay {} observación(es) que SUNAT rechazaría. '
+            'Corrija los datos en las facturas o socios (ver Excel de observaciones).'.format(len(observations)),
+            '',
+        ]
+        for obs in observations[:NODOM_MAX_LINES_DIALOG]:
+            lines.append('- {} | Ref. {} | {} | Campo {} ({}): {}'.format(
+                obs['invoice_name'], obs['ref'] or '-', obs['partner_name'],
+                obs['field_number'], obs['field_label'], obs['message']))
+        if len(observations) > NODOM_MAX_LINES_DIALOG:
+            lines.append('... y {} más.'.format(len(observations) - NODOM_MAX_LINES_DIALOG))
+        return '\n'.join(lines)
+
+    def _generate_nodom_observations_xlsx(self, observations):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Observaciones 8.2')
+        style_header = workbook.add_format({'bold': True, 'size': 10, 'text_wrap': True, 'valign': 'vcenter'})
+        style_content = workbook.add_format({'size': 10})
+        headers = ['N°', 'Asiento', 'Referencia', 'Proveedor', 'Fecha de emisión',
+                   'Campo TXT 8.2', 'Dato', 'Valor actual', 'Observación']
+        widths = [5, 22, 22, 40, 14, 12, 40, 22, 70]
+        for col, (title, width) in enumerate(zip(headers, widths)):
+            worksheet.write(0, col, title, style_header)
+            worksheet.set_column(col, col, width)
+        for row, obs in enumerate(observations, start=1):
+            values = [row, obs['invoice_name'], obs['ref'], obs['partner_name'], obs['invoice_date'],
+                      obs['field_number'], obs['field_label'], obs['value'], obs['message']]
+            for col, value in enumerate(values):
+                worksheet.write(row, col, value, style_content)
+        worksheet.autofilter(0, 0, len(observations), len(headers) - 1)
+        worksheet.freeze_panes(1, 0)
+        workbook.close()
+        output.seek(0)
+        return output.read()
