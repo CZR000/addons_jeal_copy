@@ -9,8 +9,8 @@
         <field name="model">ple.report.inv.bal.book</field>
         <field name="arch" type="xml">
             <list string="Libro Inventarios y Balances">
-                <field name="period_month" string="Mes"/>
-                <field name="period_year" string="Año"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
                 <field name="company_id"/>
                 <field name="date_generated"/>
                 <field name="state" widget="badge"
@@ -47,10 +47,10 @@
                            name="inv_bal_header">
                         <group>
                             <field name="company_id" readonly="state != 'draft'"/>
-                            <field name="period_month" readonly="state != 'draft'"/>
-                            <field name="period_year" readonly="state != 'draft'"/>
-                            <field name="date_start" invisible="1"/>
-                            <field name="date_end" invisible="1"/>
+                            <field name="date_start" readonly="state != 'draft'"/>
+                            <field name="date_end" readonly="state != 'draft'"/>
+                            <field name="balance_report_id" readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
                             <!-- Se detectan solos; visibles solo en modo desarrollador -->
                             <field name="closing_journal_ids" widget="many2many_tags"
                                    readonly="state != 'draft'" groups="base.group_no_one"/>
@@ -299,7 +299,7 @@
                 Genere un nuevo Libro de Inventarios y Balances (Formatos 3.1 a 3.20)
             </p>
             <p>
-                Seleccione la compania, el mes y el año del periodo, y use los botones
+                Seleccione la compania y el rango de fechas (inicio y fin), y use los botones
                 "Generar Excel" o "Generar PDF" para obtener el libro completo. Marque
                 "Generar por formato" para generar cada formato 3.X por separado.
             </p>
