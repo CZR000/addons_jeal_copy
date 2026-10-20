@@ -53,7 +53,7 @@ class AssetsReport02(object):
                     return line[key]
             return ''
 
-        AccountAsset = self.obj.env['account.asset']
+        AccountAsset = self.obj.env['account.asset'].with_company(self.obj.company_id)
         rows = []
         for asset_id in order:
             lines = groups[asset_id]
@@ -72,7 +72,7 @@ class AssetsReport02(object):
 
             asset = AccountAsset.browse(asset_id)
 
-            account = asset.original_move_line_ids.account_id or asset.account_asset_id
+            account = asset.account_asset_id or asset.original_move_line_ids.account_id
             account_code = account[:1].code if account else ''
 
             saldo_inicial = asset.original_value or 0.00

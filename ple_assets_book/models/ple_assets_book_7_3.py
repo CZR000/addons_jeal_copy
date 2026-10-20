@@ -3,12 +3,15 @@ from odoo.exceptions import ValidationError, UserError
 import re
 from datetime import datetime
 
+from .ple_assets_book import SQL_ASSET_SELECTION, SQL_DEPRECIATION_SELECTION
+
 
 
 class PleAssetsBook0703(models.Model):
     _inherit = 'ple.report.assets.book'
 
     def get_data_7_3_active(self):
+        asset_account_ids = self._ple_sql_ids(self._ple_asset_account_ids())
         query_data = """ 
         CREATE OR REPLACE FUNCTION get_balance(am_id INT, OUT amount_pe FLOAT) AS $$
         BEGIN
@@ -17,11 +20,8 @@ class PleAssetsBook0703(models.Model):
             LEFT JOIN account_move_line aml ON aml.move_id = am.id
             LEFT JOIN account_account   acc ON acc.id=aml.account_id             
             WHERE 
-            am.id = am_id  
-            and acc.ple_selection in ('assets_book_acquisition_asset','assets_book_improvements_asset',
-            'assets_book_other_asset','assets_book_voluntary_revaluation_asset',
-            'assets_book_revaluation_reorganization_asset','assets_book_revaluation_other_asset',
-            'assets_book_inflation_asset');
+            am.id = am_id
+            and aml.account_id in ({asset_account_ids});
         END;
         $$ 
         LANGUAGE plpgsql;
@@ -40,7 +40,7 @@ class PleAssetsBook0703(models.Model):
             TO_CHAR(am.date, 'DD/MM/YYYY') as date,
             aa.acquisition_date as acq_date,
             aa.original_value as original_value,
-            acc.ple_selection as ple_selection,
+            {asset_selection} as ple_selection,
             am.exchange_rate as exchange_rate,
             COALESCE(get_balance(am.id), 0.00) as value_acquisition_local
             
@@ -56,9 +56,7 @@ class PleAssetsBook0703(models.Model):
             aa.state NOT IN ('draft', 'cancelled') AND
             aa.company_id = '{company_id}' AND
             aa.id IS NOT NULL AND
-            acc.ple_selection IN ('assets_book_acquisition_asset','assets_book_improvements_asset',
-            'assets_book_other_asset','assets_book_voluntary_revaluation_asset','assets_book_revaluation_reorganization_asset',
-            'assets_book_revaluation_other_asset','assets_book_inflation_asset')
+            aa.account_asset_id IN ({asset_account_ids})
             AND am.id = (
                 SELECT MIN(am.id) 
                 FROM account_move am
@@ -68,7 +66,9 @@ class PleAssetsBook0703(models.Model):
         """.format(
             date_start=self.date_start,
             date_end=self.date_end,
-            company_id=self.env.company.id
+            company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
+            asset_selection=SQL_ASSET_SELECTION,
         )
 
         try:
@@ -187,8 +187,8 @@ class PleAssetsBook0703(models.Model):
         return lines
 
     def get_data_7_3_depreciation_sql(self):
-        accounts_with_groups = self.env['account.account'].search([])
-        account_group_map = {acc.id: acc.group_id.id for acc in accounts_with_groups if acc.group_id}
+        asset_account_ids = self._ple_sql_ids(self._ple_asset_account_ids())
+        depreciation_account_ids = self._ple_sql_ids(self._ple_depreciation_account_ids())
 
         query_data = """
             select
@@ -200,7 +200,7 @@ class PleAssetsBook0703(models.Model):
             aa.asset_catalog_code as asset_catalog_code,
             COALESCE(aa.asset_code,'SC01') as asset_code,
             CASE WHEN aa.disposal_date is not null and aa.disposal_date >= '{start_date}' and aa.disposal_date <= '{date_end}' then True else False end as disposal_date,
-            acc.ple_selection as ple_selection,
+            {depreciation_selection} as ple_selection,
             TO_CHAR(aa.acquisition_date,'DD/MM/YYYY') as acquisition_date,
             TO_CHAR(am.date,'DD/MM/YYYY') as date,
             amount_total_currency('{start_date}','{date_end}',aa.id,am.id) as amount_total
@@ -213,24 +213,20 @@ class PleAssetsBook0703(models.Model):
             WHERE
             ('{start_date}'<=am.date and am.date <= '{date_end}') and
             aa.company_id={company_id} and am.state='posted' and
-            rc.name !='PEN'
+            rc.name !='PEN' and
+            aa.account_asset_id in ({asset_account_ids}) and
+            aa.account_depreciation_id in ({depreciation_account_ids})
         """.format(
             start_date=self.date_start,
             date_end=self.date_end,
             company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
+            depreciation_account_ids=depreciation_account_ids,
+            depreciation_selection=SQL_DEPRECIATION_SELECTION,
         )
         try:
             self.env.cr.execute(query_data)
-            results = self.env.cr.dictfetchall()
-
-            for row in results:
-                account_id = row.get('account_id')
-                group_id = account_group_map.get(account_id)
-                if group_id:
-                    group = self.env['account.group'].browse(group_id)
-                    row['code_prefix_start'] = group.code_prefix_start
-
-            query_data = [row for row in results if row.get('code_prefix_start') == '39']
+            query_data = self.env.cr.dictfetchall()
 
         except Exception as error:
             raise ValidationError(f'Error al ejecutar la queries, comunicar al administrador: \n {error}')

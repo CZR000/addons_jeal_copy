@@ -12,6 +12,41 @@ from datetime import datetime
 
 MAX_NAME_LENGTH = 40
 
+# Cuentas que definen qué activos entran a los Formatos 7.1 a 7.4 (por código de
+# cuenta, no por Clasificación PLE ni por grupo contable).
+# Activo: toda la 33 excepto 339 (obras en curso).
+ASSET_ACCOUNT_PREFIXES = ('33',)
+ASSET_EXCLUDED_PREFIXES = ('339',)
+# Depreciación acumulada: solo estas subcuentas de la 39 (sin 396 intangibles).
+DEPRECIATION_ACCOUNT_PREFIXES = ('3933', '3952', '3953')
+
+# La Clasificación PLE de la cuenta solo reparte el importe entre columnas.
+# Si la cuenta no tiene una clasificación válida, va a "Adquisiciones".
+PLE_ASSET_SELECTIONS = (
+    'assets_book_acquisition_asset', 'assets_book_improvements_asset',
+    'assets_book_other_asset', 'assets_book_voluntary_revaluation_asset',
+    'assets_book_revaluation_reorganization_asset', 'assets_book_revaluation_other_asset',
+    'assets_book_inflation_asset',
+)
+PLE_DEPRECIATION_SELECTIONS = (
+    'assets_book_acquisition_amortization', 'assets_book_other_amortization',
+    'assets_book_voluntary_revaluation_amortization', 'assets_book_revaluation_reorganization_amortization',
+    'assets_book_revaluation_other_amortization', 'assets_book_inflation_amortization',
+)
+
+
+def sql_ple_selection(alias, selections, default):
+    """Expresión SQL: la Clasificación PLE de la cuenta si es válida, si no el valor por defecto."""
+    return "(CASE WHEN {alias}.ple_selection IN ({values}) THEN {alias}.ple_selection ELSE '{default}' END)".format(
+        alias=alias,
+        values=', '.join("'%s'" % s for s in selections),
+        default=default,
+    )
+
+
+SQL_ASSET_SELECTION = sql_ple_selection('acc', PLE_ASSET_SELECTIONS, 'assets_book_acquisition_asset')
+SQL_DEPRECIATION_SELECTION = sql_ple_selection('acc', PLE_DEPRECIATION_SELECTIONS, 'assets_book_acquisition_amortization')
+
 
 class PleAssetsBook(models.Model):
     _name = 'ple.report.assets.book'
@@ -44,6 +79,39 @@ class PleAssetsBook(models.Model):
 
     def exist_data(self, parameter):
         return parameter if parameter else ''
+
+    # ------------------------------------------------------------------
+    # Cuentas de los Formatos 7.x
+    # ------------------------------------------------------------------
+    def _ple_company_accounts(self):
+        """Cuentas de la compañía del reporte, leídas con esa compañía para que
+        el código (company-dependent en Odoo 18) sea el correcto."""
+        company = self.company_id or self.env.company
+        Account = self.env['account.account'].with_company(company)
+        return Account.search(Account._check_company_domain(company))
+
+    def _ple_account_code_map(self):
+        return {acc.id: acc.code or '' for acc in self._ple_company_accounts()}
+
+    def _ple_asset_account_ids(self):
+        """Cuentas de activo válidas: 33 excepto 339."""
+        return [
+            acc.id for acc in self._ple_company_accounts()
+            if (acc.code or '').startswith(ASSET_ACCOUNT_PREFIXES)
+            and not (acc.code or '').startswith(ASSET_EXCLUDED_PREFIXES)
+        ]
+
+    def _ple_depreciation_account_ids(self):
+        """Cuentas de depreciación válidas: 3933, 3952, 3953."""
+        return [
+            acc.id for acc in self._ple_company_accounts()
+            if (acc.code or '').startswith(DEPRECIATION_ACCOUNT_PREFIXES)
+        ]
+
+    @staticmethod
+    def _ple_sql_ids(ids):
+        """Lista de ids para un IN (...) de SQL; (0) si no hay ninguna."""
+        return ', '.join(str(int(i)) for i in ids) or '0'
 
     def validate_string(self, value, max_len=-1):
         if value is None:
@@ -81,9 +149,8 @@ class PleAssetsBook(models.Model):
         return ''
 
     def _get_lines_1(self):
-        accounts = self.env['account.account'].search([])
-        account_group_map = {acc.id: (acc.group_id.id, acc.group_id.code_prefix_start) for acc in accounts if acc.group_id}
-        account_code_map = {acc.id: acc.code for acc in accounts}
+        account_code_map = self._ple_account_code_map()
+        asset_account_ids = self._ple_sql_ids(self._ple_asset_account_ids())
 
         # Creamos un conjunto para asegurarnos de que no se procesen activos duplicados
         processed_assets = set()
@@ -227,7 +294,7 @@ class PleAssetsBook(models.Model):
         aa.original_value as original_value,
         aa.parent_id as parent_id,
         aa.asset_rate as asset_rate,
-        acc.ple_selection as ple_selection,
+        {asset_selection} as ple_selection,
         aa.state as state,
         date_part('year',now()) as today,
         --line state_close
@@ -243,15 +310,15 @@ class PleAssetsBook(models.Model):
         where
         --where line 1
     (aa.acquisition_date <= '{date_end}') and
-        aa.company_id='{company_id}'  and  
-        acc.ple_selection in ('assets_book_acquisition_asset','assets_book_improvements_asset',
-        'assets_book_other_asset','assets_book_voluntary_revaluation_asset','assets_book_revaluation_reorganization_asset',
-        'assets_book_revaluation_other_asset','assets_book_inflation_asset')
+        aa.company_id='{company_id}'  and
+        aa.account_asset_id in ({asset_account_ids})
 
         """.format(
             start_date=self.date_start,
             date_end=self.date_end,
             company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
+            asset_selection=SQL_ASSET_SELECTION,
         )
 
         try:
@@ -436,9 +503,8 @@ class PleAssetsBook(models.Model):
         return lines
 
     def line31_query(self):
-        accounts_with_groups = self.env['account.account'].search([])
-        account_group_map = {acc.id: (acc.group_id.id, acc.group_id.code_prefix_start) for acc in accounts_with_groups if acc.group_id}
-
+        """Líneas a cuentas de depreciación válidas (3933/3952/3953) de los
+        asientos de activos cerrados dentro del período."""
         query = """
                SELECT 
                  aml.balance as amount, 
@@ -452,31 +518,29 @@ class PleAssetsBook(models.Model):
                WHERE 
                  aa.state = 'close' 
                  and am.state = 'posted' 
-                 and ('{}' <= am.date) 
-                 and (am.date <='{}') 
-               """.format(self.date_start, self.date_end)
+                 and ('{date_start}' <= am.date)
+                 and (am.date <= '{date_end}')
+                 and aa.company_id = {company_id}
+                 and aml.account_id in ({depreciation_account_ids})
+               """.format(
+            date_start=self.date_start,
+            date_end=self.date_end,
+            company_id=self.company_id.id,
+            depreciation_account_ids=self._ple_sql_ids(self._ple_depreciation_account_ids()),
+        )
         try:
             self.env.cr.execute(query)
-            results = self.env.cr.dictfetchall()
-
-            filtered_data = []
-            for row in results:
-                account_id = row.get('account_id')
-                if account_id in account_group_map:
-                    group_id, code_prefix_start = account_group_map[account_id]
-                    if code_prefix_start == '39':
-                        row['code_prefix_start'] = code_prefix_start
-                        filtered_data.append(row)
-            
-            data = filtered_data
+            data = self.env.cr.dictfetchall()
         except Exception as error:
             raise ValidationError(f'Error al ejecutar la queries, comunicar al administrador: \n {error}')
         return data
 
     def _get_lines_2(self):
-        accounts = self.env['account.account'].search([])
-        account_group_map = {acc.id: (acc.group_id.id, acc.group_id.code_prefix_start) for acc in accounts if acc.group_id}
-        account_code_map = {acc.id: acc.code for acc in accounts}
+        account_code_map = self._ple_account_code_map()
+        asset_account_id_list = self._ple_asset_account_ids()
+        depreciation_account_id_list = self._ple_depreciation_account_ids()
+        asset_account_ids = self._ple_sql_ids(asset_account_id_list)
+        depreciation_account_ids = self._ple_sql_ids(depreciation_account_id_list)
 
         QUERY_DATA = """
         CREATE OR REPLACE FUNCTION calculate_first_depreciation_move_ids(
@@ -527,7 +591,8 @@ class PleAssetsBook(models.Model):
                 am.state='posted' and
                 (date_start<=am.date) and
                 (am.date <= date_end) and
-                acc.ple_selection='assets_book_acquisition_amortization' and
+                acc.id in ({depreciation_account_ids}) and
+                {depreciation_selection}='assets_book_acquisition_amortization' and
                 aa.id=asset_account_id and 
                 am.id=(SELECT ac_mo.id FROM account_move ac_mo WHERE ac_mo.asset_id=aa.id ORDER BY ac_mo.date ASC LIMIT 1);
             END;
@@ -545,8 +610,9 @@ class PleAssetsBook(models.Model):
                 FROM account_asset aa
                 LEFT JOIN account_account acc ON acc.id=aa.account_depreciation_id
                 WHERE 
-                aa.id in (select ax.id from account_asset ax WHERE ax.parent_id=asset_id) AND 
-                acc.ple_selection=ple_code AND
+                aa.id in (select ax.id from account_asset ax WHERE ax.parent_id=asset_id) AND
+                acc.id in ({depreciation_account_ids}) AND
+                {depreciation_selection}=ple_code AND
                 (date_start<=aa.acquisition_date) and (aa.acquisition_date <=date_end);
             END;
             $$ 
@@ -566,8 +632,9 @@ class PleAssetsBook(models.Model):
                 LEFT JOIN ACCOUNT_ACCOUNT acc ON acc.id=aml.account_id
                 WHERE 
                 am.id=acc_move_id and
-                am.state='posted' and aa.id=asset_account_id
-                limit 1;             
+                am.state='posted' and aa.id=asset_account_id and
+                aml.account_id=aa.account_depreciation_id
+                limit 1;
             END;
             $$ 
             LANGUAGE plpgsql;
@@ -576,6 +643,7 @@ class PleAssetsBook(models.Model):
         SELECT
             aa.id as id,
             aa.account_depreciation_id as account_id,
+            aa.account_asset_id as asset_account_id,
             aa.asset_catalog_code as asset_catalog_code,
             COALESCE(aa.asset_code,'SC01') as asset_code,
 
@@ -603,7 +671,7 @@ class PleAssetsBook(models.Model):
             amount_total_currency('{start_date}','{date_end}',aa.id,am.id) as am_amount_total,
             am.id as account_move_id,
             aa.state as state,
-            acc.ple_selection as ple_selection,
+            {depreciation_selection} as ple_selection,
             date_part('year',now()) as today,
             calculate_col_31('{start_date}','{date_end}',aa.id) as calculate_col31_1,
             calculate_increase_DEP_amount('{start_date}','{date_end}',aa.id,'assets_book_acquisition_amortization') as calculate_col31,
@@ -620,14 +688,15 @@ class PleAssetsBook(models.Model):
             WHERE
             ('{start_date}'<=am.date and am.date <= '{date_end}') and
             aa.company_id={company_id} and am.state='posted' and
-            acc.ple_selection in ('assets_book_acquisition_amortization',
-            'assets_book_other_amortization','assets_book_voluntary_revaluation_amortization',
-            'assets_book_revaluation_reorganization_amortization', 'assets_book_revaluation_other_amortization',
-            'assets_book_inflation_amortization')
+            aa.account_asset_id in ({asset_account_ids}) and
+            aa.account_depreciation_id in ({depreciation_account_ids})
             """.format(
             start_date=self.date_start,
             date_end=self.date_end,
             company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
+            depreciation_account_ids=depreciation_account_ids,
+            depreciation_selection=SQL_DEPRECIATION_SELECTION,
         )
 
         try:
@@ -636,32 +705,20 @@ class PleAssetsBook(models.Model):
             query_data = []
         
             for row in results:
-                account_id = row.get('account_id')
+                # La cuenta informada es la del activo (33); la 39 solo da el importe.
+                row['code_account_account'] = self.validate_string(
+                    account_code_map.get(row.get('asset_account_id'), ''), 8)
+                row['code_prefix_start'] = '39'
 
-                if account_id in account_code_map:
-                    row['code_account_account'] = self.validate_string(account_code_map[account_id], 8)
-                else:
-                    row['code_account_account'] = ''
+                # Correlativo de la línea del asiento que va a la cuenta de depreciación
+                if row.get('account_move_id') and row['id']:
+                    move_lines = self.env['account.move.line'].search([
+                        ('move_id', '=', row['account_move_id']),
+                        ('account_id', 'in', depreciation_account_id_list),
+                    ], limit=1)
+                    row['correlative'] = move_lines.ple_correlative or 'M000000001'
 
-                if account_id in account_group_map:
-                    group_id, code_prefix_start = account_group_map[account_id]
-                    row['code_prefix_start'] = code_prefix_start
-                    
-                    # Solo incluimos los que tienen code_prefix_start='39'
-                    if code_prefix_start == '39':
-                        # Para la función correlative_dep que necesitaba filtrar por code_prefix_start='39'
-                        if 'account_move_id' in row and row['id']:
-                            # Buscar correlativo que coincida con code_prefix_start='39'
-                            move_lines = self.env['account.move.line'].search([
-                                ('move_id', '=', row['account_move_id']),
-                                ('account_id.group_id.code_prefix_start', '=', '39')
-                            ])
-                            if move_lines:
-                                row['correlative'] = move_lines[0].ple_correlative or 'M000000001'
-                            else:
-                                row['correlative'] = 'M000000001'
-                        
-                        query_data.append(row)
+                query_data.append(row)
         except Exception as error:
             raise ValidationError(f'Error al ejecutar la queries, comunicar al administrador: \n {error}')
         lines = []

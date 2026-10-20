@@ -12,9 +12,9 @@ class PleAssetsBook(models.Model):
     _inherit = 'ple.report.assets.book'
 
     def get_data_report_03(self):
-        accounts_with_groups = self.env['account.account'].search([])
-        account_group_map = {acc.id: (acc.group_id.id, acc.group_id.code_prefix_start) for acc in accounts_with_groups if acc.group_id}
-        
+        # Solo activos con N° de contrato cuya cuenta de activo sea 33 (sin 339)
+        asset_account_ids = self._ple_sql_ids(self._ple_asset_account_ids())
+
         query_data_1 = """
             CREATE OR REPLACE FUNCTION get_balance(am_id INT, OUT amount_pe FLOAT) AS $$
             BEGIN
@@ -23,11 +23,8 @@ class PleAssetsBook(models.Model):
                 LEFT JOIN account_move_line aml ON aml.move_id = am.id
                 LEFT JOIN account_account   acc ON acc.id=aml.account_id             
                 WHERE 
-                am.id = am_id  
-                and acc.ple_selection in ('assets_book_acquisition_asset','assets_book_improvements_asset',
-                'assets_book_other_asset','assets_book_voluntary_revaluation_asset',
-                'assets_book_revaluation_reorganization_asset','assets_book_revaluation_other_asset',
-                'assets_book_inflation_asset');
+                am.id = am_id
+                and aml.account_id in ({asset_account_ids});
             END;
             $$ 
             LANGUAGE plpgsql;
@@ -55,6 +52,7 @@ class PleAssetsBook(models.Model):
                 aa.acquisition_date <= '{date_end}' AND
                 aa.company_id='{company_id}'  AND
                 contract_number IS NOT NULL AND
+                aa.account_asset_id in ({asset_account_ids}) AND
                 aa.state not in ('draft', 'cancelled')
                 AND am.id = (
                     SELECT MIN(am.id) 
@@ -66,6 +64,7 @@ class PleAssetsBook(models.Model):
             start_date=self.date_start,
             date_end=self.date_end,
             company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
         )
 
         query_data_2 = """
@@ -106,11 +105,13 @@ class PleAssetsBook(models.Model):
                 aa.acquisition_date <= '{date_end}' AND
                 aa.company_id='{company_id}'  AND
                 contract_number IS NOT NULL AND
+                aa.account_asset_id in ({asset_account_ids}) AND
                 aa.state not in ('draft', 'cancelled')
         """.format(
             start_date=self.date_start,
             date_end=self.date_end,
             company_id=self.company_id.id,
+            asset_account_ids=asset_account_ids,
         )
 
         try:
@@ -118,22 +119,9 @@ class PleAssetsBook(models.Model):
             self.env.cr.execute(query_data_1)
             data_1 = self.env.cr.dictfetchall()
 
-            for row in data_1:
-                account_id = row.get('account_id')
-                if account_id in account_group_map:
-                    group_id, code_prefix_start = account_group_map[account_id]
-                    row['code_prefix_start'] = code_prefix_start
 
             self.env.cr.execute(query_data_2)
             data_2 = self.env.cr.dictfetchall()
-
-            for row in data_2:
-                account_id = row.get('account_id')
-                if account_id in account_group_map:
-                    group_id, code_prefix_start = account_group_map[account_id]
-                    row['code_prefix_start'] = code_prefix_start
-            
-            data_2 = [row for row in data_2 if row.get('code_prefix_start') == '33']
 
             filtro = lambda elem: elem['id'] not in [e['id'] for e in data_1]
             data_filter = list(filter(filtro, data_2))
