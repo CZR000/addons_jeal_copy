@@ -107,6 +107,9 @@ class AssetsReport(object):
                 'ajuste_inflacion_dep': ajuste_inflacion_dep,
                 'dep_acum_ajustada_inflacion': dep_acum_ajustada_inflacion,
             })
+        # Orden por cuenta contable de menor a mayor; dentro de cada cuenta,
+        # por código del activo.
+        rows.sort(key=lambda r: (r['cuenta_contable'] or '', r['codigo'] or ''))
         return rows
 
     def get_content_excel(self):

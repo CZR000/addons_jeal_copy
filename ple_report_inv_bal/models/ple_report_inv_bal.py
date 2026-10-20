@@ -3,12 +3,11 @@ import logging
 import os
 import subprocess
 import tempfile
-from calendar import monthrange
 from datetime import date, timedelta
 from io import BytesIO
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.osv import expression
 
 from ..reports.report_inv_bal_base import xlsxwriter
@@ -43,24 +42,14 @@ FORMATOS = [
     ('20', '3.20', 'Estado de Ganancias y Perdidas por Funcion'),
 ]
 
-MONTHS = [
-    ('01', 'Enero'), ('02', 'Febrero'), ('03', 'Marzo'), ('04', 'Abril'),
-    ('05', 'Mayo'), ('06', 'Junio'), ('07', 'Julio'), ('08', 'Agosto'),
-    ('09', 'Septiembre'), ('10', 'Octubre'), ('11', 'Noviembre'),
-    ('12', 'Diciembre'),
-]
-
-# Alcance del periodo para date_start:
-#   'month' -> date_start = primer dia del mes seleccionado (saldo inicial del
-#              mes + movimientos del mes en 3.17 a 3.20).
-#   'year'  -> date_start = 01/01 del anio seleccionado (acumulado del
-#              ejercicio, como el libro oficial al 31/12).
-# date_end siempre es el ultimo dia del mes seleccionado.
-PERIOD_SCOPE = 'month'
+def _default_date_start(env):
+    """Primer dia del mes anterior a la fecha actual."""
+    today = fields.Date.context_today(env.user)
+    return (today.replace(day=1) - timedelta(days=1)).replace(day=1)
 
 
-def _default_period(env):
-    """Ultimo dia del mes anterior a la fecha actual (periodo por defecto)."""
+def _default_date_end(env):
+    """Ultimo dia del mes anterior a la fecha actual."""
     today = fields.Date.context_today(env.user)
     return today.replace(day=1) - timedelta(days=1)
 
@@ -71,12 +60,12 @@ class PleReportInvBal(models.Model):
 
     _description = 'Reporte PLE Libro de Inventarios y Balances - Fisico (3.1 a 3.20)'
 
-    _order = 'period_year desc, period_month desc, id desc'
+    _order = 'date_end desc, date_start desc, id desc'
 
     _sql_constraints = [
         ('period_company_uniq',
-         'unique(company_id, period_year, period_month)',
-         'Ya existe un reporte para esta compañía y período.'),
+         'unique(company_id, date_start, date_end)',
+         'Ya existe un reporte para esta compañía y rango de fechas.'),
     ]
 
     name = fields.Char(compute='_compute_name', store=True, string='Nombre')
@@ -87,23 +76,14 @@ class PleReportInvBal(models.Model):
         domain=lambda self: [('id', 'in', self.env.user.company_ids.ids)],
     )
 
-    period_month = fields.Selection(
-        MONTHS, string='Mes', required=True,
-        default=lambda self: _default_period(self.env).strftime('%m'),
-    )
-
-    period_year = fields.Selection(
-        selection='_get_year_selection', string='Año', required=True,
-        default=lambda self: str(_default_period(self.env).year),
-    )
-
-    # Se calculan del Mes/Año; no se muestran en la vista.
     date_start = fields.Date(
-        string='Fecha Inicio', compute='_compute_period_dates', store=True,
+        string='Fecha Inicio', required=True,
+        default=lambda self: _default_date_start(self.env),
     )
 
     date_end = fields.Date(
-        string='Fecha Fin', compute='_compute_period_dates', store=True,
+        string='Fecha Fin', required=True,
+        default=lambda self: _default_date_end(self.env),
     )
 
     date_generated = fields.Date(string='Generado el', readonly=True)
@@ -307,22 +287,13 @@ class PleReportInvBal(models.Model):
 
     pdf_binary_all = fields.Binary(string='PDF Libro Completo', readonly=True)
 
-    @api.depends('period_month', 'period_year')
-    def _compute_period_dates(self):
+    @api.constrains('date_start', 'date_end')
+    def _check_date_range(self):
         for rec in self:
-            year, month = int(rec.period_year or 0), int(rec.period_month or 0)
-            if not month or not year:
-                rec.date_start = rec.date_end = False
-                continue
-            rec.date_end = date(year, month, monthrange(year, month)[1])
-            rec.date_start = date(year, 1 if PERIOD_SCOPE == 'year' else month, 1)
-
-    @api.model
-    def _get_year_selection(self):
-        """Anios disponibles: desde 2020 hasta el anio actual, el mas
-        reciente primero."""
-        current = fields.Date.context_today(self).year
-        return [(str(y), str(y)) for y in range(current, 2019, -1)]
+            if rec.date_start and rec.date_end and rec.date_start > rec.date_end:
+                raise ValidationError(_(
+                    'La Fecha Inicio no puede ser posterior a la Fecha Fin.'
+                ))
 
     @api.depends('company_id')
     def _compute_closing_opening_journals(self):
@@ -340,12 +311,13 @@ class PleReportInvBal(models.Model):
                 base + ['|', ('name', 'ilike', 'apertura'), ('code', '=ilike', 'apert%')]
             )
 
-    @api.depends('company_id', 'period_month', 'period_year')
+    @api.depends('company_id', 'date_start', 'date_end')
     def _compute_name(self):
         for rec in self:
-            if rec.period_month and rec.period_year:
-                rec.name = 'Libro Inv. y Balances - %s/%s - %s' % (
-                    rec.period_month, rec.period_year,
+            if rec.date_start and rec.date_end:
+                rec.name = 'Libro Inv. y Balances - %s al %s - %s' % (
+                    rec.date_start.strftime('%d/%m/%Y'),
+                    rec.date_end.strftime('%d/%m/%Y'),
                     rec.company_id.name or '',
                 )
             else:
@@ -477,7 +449,9 @@ class PleReportInvBal(models.Model):
     def _check_dates(self):
         self.ensure_one()
         if not self.date_start or not self.date_end:
-            raise UserError(_('Debe indicar el Mes y el Año del reporte.'))
+            raise UserError(_('Debe indicar la Fecha Inicio y la Fecha Fin del reporte.'))
+        if self.date_start > self.date_end:
+            raise UserError(_('La Fecha Inicio no puede ser posterior a la Fecha Fin.'))
 
     def _mark_generated(self):
         self.write({
