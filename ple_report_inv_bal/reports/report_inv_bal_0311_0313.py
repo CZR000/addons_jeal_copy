@@ -81,7 +81,7 @@ class InvBal312ReportExcel(InvBalPartnerReportBase):
 
 
 class InvBal313ReportExcel(InvBalReportBase):
-    """Formato 3.13 - Cuentas por pagar diversas (cuenta 46).
+    """Formato 3.13 - Cuentas por pagar diversas (cuentas 46 y 47).
 
     Columnas: Informacion de terceros (tipo doc Tabla 2, numero, nombre) |
     descripcion de la obligacion | fecha de emision del comprobante o de
@@ -92,7 +92,8 @@ class InvBal313ReportExcel(InvBalReportBase):
     """
 
     FORMATO_CODE = '3.13'
-    FORMATO_TITLE = 'Detalle del saldo de la cuenta 46 - Cuentas por pagar diversas'
+    FORMATO_TITLE = ('Detalle del saldo de la cuenta 46 y 47 - Cuentas por pagar '
+                     'diversas - Terceros y relacionadas')
     SHEET_NAME = 'F3.13 CxP Diversas'
     LANDSCAPE = True
 

@@ -6,8 +6,7 @@ class InvBal31ReportExcel(InvBalReportBase):
 
     Layout de dos columnas: ACTIVO (izquierda) y PASIVO Y PATRIMONIO
     (derecha), cada una con secciones, lineas y totales, al cierre del
-    periodo (date_end). Las filas vienen del reporte Balance de situacion
-    de Odoo (ver _get_data_01).
+    periodo (date_end).
 
     `data` es el dict devuelto por _get_data_01():
         {'activo': [(tipo, label, valor), ...],

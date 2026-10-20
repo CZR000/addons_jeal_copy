@@ -41,7 +41,7 @@ class PleReportInvBalBook0311To0313(models.Model):
         return InvBal312ReportExcel(self, self._get_data_12())
 
     def action_generate_13(self):
-        """Formato 3.13 - Cuentas por pagar diversas (cuenta 46)."""
+        """Formato 3.13 - Cuentas por pagar diversas (46 y 47)."""
         return self._generate_single('13')
 
     def _prepare_report_13(self):
@@ -105,9 +105,9 @@ class PleReportInvBalBook0311To0313(models.Model):
         return self._get_open_items(['42'], date_source='invoice')
 
     # ------------------------------------------------------------------
-    # DATA - Formato 3.13 Cuentas por pagar diversas (cuenta 46)
+    # DATA - Formato 3.13 Cuentas por pagar diversas (cuentas 46 y 47)
     # ------------------------------------------------------------------
     def _get_data_13(self):
-        """Datos del formato 3.13 - Cuentas por pagar diversas (cuenta 46)."""
+        """Datos del formato 3.13 - Cuentas por pagar diversas (46 y 47)."""
         self.ensure_one()
-        return self._get_open_items(['46'], date_source='invoice', split_no_partner=True)
+        return self._get_open_items(['46', '47'], date_source='invoice', split_no_partner=True)
