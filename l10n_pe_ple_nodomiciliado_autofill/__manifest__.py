@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'PLE Purchase Book - Autorelleno No Domiciliado',
-    'version': '18.0.2.1.0',
+    'version': '18.0.2.2.0',
     'summary': 'Tipo de documento (91) en facturas No Domiciliado y control '
                'del sustento de crédito fiscal según SUNAT.',
     'description': """
@@ -37,6 +37,11 @@ Cambios 18.0.2.1.0
 * Al publicar una factura o nota de crédito de proveedor No Domiciliado se
   exige: Tipo de Renta, CDI, país del proveedor (con código SUNAT) e
   identificación del proveedor.
+
+Cambios 18.0.2.2.0
+------------------
+* En facturas y notas de crédito de proveedor No Domiciliado, Tipo de Renta y
+  CDI son obligatorios al guardar (formulario, pestaña No Domiciliado).
     """,
     'author': 'Empiria',
     'website': 'https://empiria.com.pe',
@@ -46,7 +51,9 @@ Cambios 18.0.2.1.0
         'ple_purchase_book',
         'l10n_pe',
     ],
-    'data': [],
+    'data': [
+        'views/account_move_views.xml',
+    ],
     'installable': True,
     'application': False,
     'auto_install': False,

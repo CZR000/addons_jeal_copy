@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Factura de proveedor No Domiciliado: Tipo de Renta y CDI obligatorios
+         al guardar (pestaña No Domiciliado). -->
+    <record id="account_move_view_form_nodom_required" model="ir.ui.view">
+        <field name="name">account.move.view.form.nodom.required</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="ple_purchase_book.account_move_view_form_inherit_ple_purchase_book"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='type_rent_id']" position="attributes">
+                <attribute name="required">is_nodomicilied and move_type in ('in_invoice', 'in_refund')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='cdi']" position="attributes">
+                <attribute name="required">is_nodomicilied and move_type in ('in_invoice', 'in_refund')</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
