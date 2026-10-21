@@ -62,7 +62,10 @@ class AssetsReport(object):
             account = asset.account_asset_id or asset.original_move_line_ids.account_id
             account_code = account[:1].code if account else ''
 
-            saldo_inicial = asset.original_value or 0.00
+            # Saldo al inicio del período (Tabla de depreciación de Odoo, igual
+            # que el TXT): un activo adquirido dentro del período sale en 0 y
+            # su costo va solo en Adquisiciones.
+            saldo_inicial = total(lines, 'asset_opening')
             adquisiciones = total(lines, 'asset_amount')
             mejoras = total(lines, 'amount_improvement')
             retiros = total(lines, 'amount_withdrawals')
@@ -243,7 +246,28 @@ class AssetsReport(object):
 
         rows = self._prepare_excel_rows()
         i = data_start_row
+
+        def write_subtotal(row_idx, account, first_row, last_row):
+            """Fila TOTAL CUENTA <cuenta> con SUBTOTAL de su grupo (SUBTOTAL
+            para que el total general no lo sume dos veces)."""
+            ws.merge_range(row_idx, 0, row_idx, 5, 'TOTAL CUENTA %s' % (account or ''), style_total_label)
+            for col in range(6, 26):
+                if col in total_columns:
+                    col_letter = _xl_col_to_name(col)
+                    ws.write_formula(row_idx, col, '=SUBTOTAL(9,{0}{1}:{0}{2})'.format(
+                        col_letter, first_row + 1, last_row + 1), style_total_number)
+                else:
+                    ws.write_blank(row_idx, col, None, style_total_blocked)
+
+        group_account = None
+        group_start = i
         for row in rows:
+            # Filas agrupadas por cuenta contable (ya vienen ordenadas).
+            if group_account is not None and row['cuenta_contable'] != group_account:
+                write_subtotal(i, group_account, group_start, i - 1)
+                i += 1
+                group_start = i
+            group_account = row['cuenta_contable']
             ws.write(i, 0, row['codigo'], style_content)
             ws.write(i, 1, row['cuenta_contable'], style_content)
             ws.write(i, 2, row['descripcion'], style_content)
@@ -273,6 +297,10 @@ class AssetsReport(object):
 
             i += 1
 
+        if rows:
+            write_subtotal(i, group_account, group_start, i - 1)
+            i += 1
+
         total_row = i
         ws.merge_range(total_row, 0, total_row, 5, 'TOTALES', style_total_label)
         if i > data_start_row:
@@ -281,7 +309,7 @@ class AssetsReport(object):
             for col in range(6, 26):
                 if col in total_columns:
                     col_letter = _xl_col_to_name(col)
-                    formula = '=SUM({0}{1}:{0}{2})'.format(col_letter, first_data_row, last_data_row)
+                    formula = '=SUBTOTAL(9,{0}{1}:{0}{2})'.format(col_letter, first_data_row, last_data_row)
                     ws.write_formula(total_row, col, formula, style_total_number)
                 else:
                     ws.write_blank(total_row, col, None, style_total_blocked)
