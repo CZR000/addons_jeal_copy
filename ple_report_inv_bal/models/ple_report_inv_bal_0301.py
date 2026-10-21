@@ -29,21 +29,25 @@ class PleReportInvBalBook0301(models.Model):
     # DATA - Formato 3.1 Balance General
     # ------------------------------------------------------------------
     #
-    # Las filas, sus nombres y sus importes salen del reporte contable
-    # "Balance de situacion" de Odoo (Contabilidad > Reportes), al
-    # `date_end`. Se mantiene la tabla de siempre:
-    #   - Columna ACTIVO: primera linea principal del reporte (Activos).
-    #   - Columna PASIVO Y PATRIMONIO: las demas lineas principales
-    #     (Pasivos, Patrimonio, Pasivos + Patrimonio).
-    #   - Cada grupo: seccion en mayusculas, sus lineas, "TOTAL <GRUPO>"
-    #     y una fila en blanco, igual que antes.
-    #   - Las lineas de tercer nivel o mas no se abren: se muestra la
-    #     linea de segundo nivel con su importe (que ya las incluye).
+    # La tabla es la de siempre (mismas secciones, titulos, totales y
+    # filas en blanco). Solo las lineas de detalle y los importes salen
+    # del reporte contable "Balance de situacion" de Odoo al `date_end`:
+    #   ACTIVO CORRIENTE     <- lineas de "Activos corrientes"
+    #   ACTIVO NO CORRIENTE  <- demas lineas de Activos
+    #   PASIVO CORRIENTE     <- lineas de "Pasivos corrientes"
+    #   PASIVO NO CORRIENTE  <- demas lineas de Pasivos
+    #   PATRIMONIO NETO      <- lineas de Patrimonio (un nivel mas si la
+    #                           linea agrupa otras)
+    # Los totales toman el importe de la linea equivalente del reporte.
+
+    # Codigos de las lineas del Balance de situacion estandar de Odoo.
+    BS_CURRENT_ASSETS_CODES = ('CA',)
+    BS_CURRENT_LIABILITIES_CODES = ('CL',)
 
     def _get_data_01(self):
         """Devuelve la estructura del Balance General (columnas ACTIVO y
-        PASIVO Y PATRIMONIO) con los importes del Balance de situacion
-        al `date_end`.
+        PASIVO Y PATRIMONIO) con las lineas e importes del Balance de
+        situacion al `date_end`.
 
         Retorna dict con:
             'activo':  lista de filas (tipo, label, valor)
@@ -63,50 +67,88 @@ class PleReportInvBalBook0301(models.Model):
             else:
                 roots.append(line)
 
-        if not roots:
+        # Activos, Pasivos, Patrimonio (y Pasivos + Patrimonio).
+        if len(roots) < 3:
             raise UserError(_(
-                'El Balance de situación no devolvió líneas al %s.'
+                'El Balance de situación no devolvió las secciones Activos, '
+                'Pasivos y Patrimonio al %s.'
             ) % self.date_end.strftime('%d/%m/%Y'))
+        assets_root, liabilities_root, equity_root = roots[:3]
+        value = self._report_line_value
 
-        def name(line):
-            return line.get('name') or ''
+        def detail(line):
+            return ('line', line.get('name') or '', value(line))
 
-        def add_root(root, rows):
-            """Seccion principal con sus grupos y su total."""
-            kids = children.get(root['id'])
-            if not kids:
-                rows.append(('total', name(root).upper(), self._report_line_value(root)))
-                rows.append(('blank', '', None))
-                return
-            rows.append(('section', name(root).upper(), None))
-            for child in kids:
-                grandkids = children.get(child['id'])
-                if grandkids:
-                    rows.append(('section', name(child).upper(), None))
-                    for grandkid in grandkids:
-                        rows.append(('line', name(grandkid), self._report_line_value(grandkid)))
-                    rows.append(('total', _('TOTAL %s') % name(child).upper(),
-                                 self._report_line_value(child)))
-                    rows.append(('blank', '', None))
-                else:
-                    rows.append(('line', name(child), self._report_line_value(child)))
-            if rows[-1][0] != 'blank':
-                rows.append(('blank', '', None))
-            rows.append(('total', _('TOTAL %s') % name(root).upper(),
-                         self._report_line_value(root)))
-            rows.append(('blank', '', None))
+        def split_current(root, codes):
+            """(linea corriente, otras lineas) de Activos o Pasivos. La linea
+            corriente es la del codigo estandar; si no existe, la primera
+            que agrupa otras."""
+            kids = children.get(root['id'], [])
+            current = next((k for k in kids if k.get('_code') in codes), None)
+            if current is None:
+                current = next((k for k in kids if children.get(k['id'])), None)
+            others = [k for k in kids if k is not current]
+            return current, others
 
-        activo = []
-        add_root(roots[0], activo)
+        def current_rows(current):
+            if current is None:
+                return [], 0.0
+            kids = children.get(current['id'])
+            return ([detail(k) for k in kids] if kids else [detail(current)]), value(current)
 
-        pasivo = []
-        for root in roots[1:]:
-            add_root(root, pasivo)
+        # --- Columna ACTIVO ---
+        ca, other_assets = split_current(assets_root, self.BS_CURRENT_ASSETS_CODES)
+        ca_rows, tac = current_rows(ca)
+        tanc = sum(value(k) for k in other_assets)
 
-        # Sin fila en blanco al final de cada columna.
-        for rows in (activo, pasivo):
-            while rows and rows[-1][0] == 'blank':
-                rows.pop()
+        activo = [
+            ('section', 'ACTIVO', None),
+            ('section', 'ACTIVO CORRIENTE', None),
+            *ca_rows,
+            ('total', 'TOTAL ACTIVO CORRIENTE', tac),
+            ('blank', '', None),
+            ('section', 'ACTIVO NO CORRIENTE', None),
+            *[detail(k) for k in other_assets],
+            ('total', 'TOTAL ACTIVO NO CORRIENTE', tanc),
+            ('blank', '', None),
+            ('total', 'TOTAL ACTIVO', value(assets_root)),
+        ]
+
+        # --- Columna PASIVO Y PATRIMONIO ---
+        cl, other_liabilities = split_current(liabilities_root, self.BS_CURRENT_LIABILITIES_CODES)
+        cl_rows, tpc = current_rows(cl)
+        tpnc = sum(value(k) for k in other_liabilities)
+        total_pasivo = value(liabilities_root)
+
+        equity_rows = []
+        for kid in children.get(equity_root['id'], []):
+            grandkids = children.get(kid['id'])
+            equity_rows.extend([detail(g) for g in grandkids] if grandkids else [detail(kid)])
+        total_patrimonio = value(equity_root)
+
+        if len(roots) > 3:
+            total_pasivo_patrimonio = value(roots[3])
+        else:
+            total_pasivo_patrimonio = total_pasivo + total_patrimonio
+
+        pasivo = [
+            ('section', 'PASIVO Y PATRIMONIO', None),
+            ('section', 'PASIVO CORRIENTE', None),
+            *cl_rows,
+            ('total', 'TOTAL PASIVO CORRIENTE', tpc),
+            ('blank', '', None),
+            ('section', 'PASIVO NO CORRIENTE', None),
+            *[detail(k) for k in other_liabilities],
+            ('total', 'TOTAL PASIVO NO CORRIENTE', tpnc),
+            ('blank', '', None),
+            ('total', 'TOTAL PASIVO', total_pasivo),
+            ('blank', '', None),
+            ('section', 'PATRIMONIO NETO', None),
+            *equity_rows,
+            ('total', 'TOTAL PATRIMONIO NETO', total_patrimonio),
+            ('blank', '', None),
+            ('total', 'TOTAL PASIVO Y PATRIMONIO NETO', total_pasivo_patrimonio),
+        ]
 
         return {'activo': activo, 'pasivo': pasivo}
 
@@ -162,10 +204,11 @@ class PleReportInvBalBook0301(models.Model):
         result = []
         for line in report._get_lines(options):
             try:
-                _markup, model, _res_id = report._parse_line_id(line['id'])[-1]
+                _markup, model, res_id = report._parse_line_id(line['id'])[-1]
             except (KeyError, IndexError, ValueError):
                 continue
             if model == 'account.report.line':
+                line['_code'] = self.env['account.report.line'].browse(res_id).code or ''
                 result.append(line)
         return result
 
